@@ -2,7 +2,7 @@ import keras
 from keras.layers import Dense, Input, LSTM, Embedding, Bidirectional
 from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
 from keras.layers import Conv1D, GlobalMaxPooling1D, TimeDistributed
-
+from keras.layers import TimeDistributed, Lambda
 from keras.layers.merge import concatenate
 
 from keras import optimizers as k_opt
@@ -182,15 +182,27 @@ class RCNNModel(BaseModel):
         dsize = self.dense_size
 
         document = Input(shape=(maxlen,), dtype="int32")
-        l_context = Input(shape=(maxlen,), dtype="int32")
-        r_context = Input(shape=(maxlen,), dtype="int32")
+
+        def k_slice(x, start, end):
+            return x[:, start:end]
+
+        left_1 = Lambda(k_slice, arguments={'start': maxlen - 1,
+                                            'end': maxlen})(document)
+        left_2 = Lambda(k_slice, arguments={'start': 0,
+                                            'end': maxlen - 1})(document)
+        left_context = concatenate([left_1, left_2], axis=1)
+
+        right_1 = Lambda(k_slice, arguments={'start': 1,
+                                             'end': maxlen})(document)
+        right_2 = Lambda(k_slice, arguments={'start': 0, 'end': 1})(document)
+        right_context = concatenate([right_1, right_2], axis=1)
 
         embedder = Embedding(max_features, embed_size,
                              weights=[embed_matrix], trainable=True)
 
         doc_embedding = embedder(document)
-        l_embedding = embedder(l_context)
-        r_embedding = embedder(r_context)
+        l_embedding = embedder(left_context)
+        r_embedding = embedder(right_context)
 
         forward = LSTM(embed_size, return_sequences=True,
                        dropout=0.1, recurrent_dropout=drop)(l_embedding)
@@ -202,8 +214,7 @@ class RCNNModel(BaseModel):
         pool_rnn = GlobalMaxPool1D()(semantic)
         output = Dense(6, activation="sigmoid")(pool_rnn)
 
-        model = keras.models.Model(inputs=[document, l_context, r_context],
-                                   outputs=output)
+        model = keras.models.Model(inputs=document, outputs=output)
         model.compile(optimizer="adadelta", loss="categorical_crossentropy",
                       metrics=["accuracy"])
         self.model = model
