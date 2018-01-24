@@ -2,7 +2,7 @@ import keras
 from keras.layers import Dense, Input, LSTM, Embedding, Bidirectional
 from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
 from keras.layers import Conv1D, GlobalMaxPooling1D, TimeDistributed
-from keras.layers import TimeDistributed, Lambda
+from keras.layers import TimeDistributed, Lambda, GRU
 from keras.layers.merge import concatenate
 
 from keras import optimizers as k_opt
@@ -110,6 +110,49 @@ class Lstm(BaseModel):
                 optim_name: {self.optim_name}
                 batch_size: {self.batch_size}
                 dropout: {self.dropout}'''
+        print(model_descirption)
+        print(model.summary())
+
+
+class DoubleGRU(BaseModel):
+    def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.001,
+                 optim_name=None, batch_size=128, dropout=0.1):
+        super().__init__(data, batch_size)
+        if optim_name is None:
+            optim_name = 'nadam'
+        self.lr = lr
+        self.embed_trainable = embed_trainable
+        self.dense_size = dense_size
+        self.optim_name = optim_name
+        self.dropout = dropout
+        self.build_model()
+        self.description = 'Double GRU'
+
+    def build_model(self):
+        data = self.data
+        input_layer = Input(shape=(data.seq_length,))
+        embedding_layer = Embedding(data.max_feature, data.embed_dim,
+                                    weights=[data.embed_matrix],
+                                    trainable=self.embed_trainable)(input_layer)
+        x = Bidirectional(GRU(data.embed_dim, return_sequences=True))(
+            embedding_layer)
+        x = Dropout(self.dropout)(x)
+        x = Bidirectional(GRU(data.embed_dim, return_sequences=False))(x)
+        x = Dense(self.dense_size, activation="relu")(x)
+        output_layer = Dense(6, activation="sigmoid")(x)
+
+        model = keras.models.Model(inputs=input_layer, outputs=output_layer)
+        optimizer = get_optimizer(self.lr, self.optim_name)
+        model.compile(loss='binary_crossentropy', optimizer=optimizer,
+                      metrics=['accuracy'])
+        self.model = model
+        model_descirption = f'''Double GRU model
+                        dense_size: {self.dense_size}
+                        embed_trainbale: {self.embed_trainable}
+                        lr: {self.lr}
+                        optim_name: {self.optim_name}
+                        batch_size: {self.batch_size}
+                        dropout: {self.dropout}'''
         print(model_descirption)
         print(model.summary())
 
