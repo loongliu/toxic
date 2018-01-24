@@ -38,6 +38,7 @@ def ensure_dir(path):
 def init_log():
     logger = Logger('logs')
     sys.stdout = logger
+    sys.stderr = logger
     return logger.log_dir
 
 
