@@ -72,7 +72,8 @@ class DataSource:
         print(f'found {total_word} words in data, {in_word} words in embedding')
 
     def description(self):
-        return f'''model use train data: {self.train_file}
+        return f'''data source use 
+        train data: {self.train_file}
         test data: {self.test_file}
         embed_file: {self._embed_file}
         embed_dim: {self.embed_dim}

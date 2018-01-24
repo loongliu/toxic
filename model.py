@@ -1,7 +1,10 @@
 import keras
 from keras.layers import Dense, Input, LSTM, Embedding, Bidirectional
 from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
-from keras.layers import Conv1D, GlobalMaxPooling1D, Activation
+from keras.layers import Conv1D, GlobalMaxPooling1D, TimeDistributed
+
+from keras.layers.merge import concatenate
+
 from keras import optimizers as k_opt
 
 
@@ -153,3 +156,64 @@ class CNNModel(BaseModel):
                 batch_size: {self.batch_size}'''
         print(model_descirption)
         print(model.summary())
+
+
+class RCNNModel(BaseModel):
+    def __init__(self, data, batch_size=64, embed_trainable=False,
+                 lr=0.001, optim_name=None, dense_size=100, dropout=0.1):
+        super().__init__(data, batch_size)
+        if optim_name is None:
+            optim_name = 'nadam'
+        self.optim_name = optim_name
+        self.embed_trainable = embed_trainable
+        self.lr = lr
+        self.dense_size = dense_size
+        self.dropout = dropout
+        self.build_model()
+        self.description = 'RCNN Model'
+
+    def build_model(self):
+        data = self.data
+        maxlen = data.seq_length
+        max_features = data.max_feature
+        embed_size = data.embed_dim
+        embed_matrix = data.embed_matrix
+        drop = self.dropout
+        dsize = self.dense_size
+
+        document = Input(shape=(maxlen,), dtype="int32")
+        l_context = Input(shape=(maxlen,), dtype="int32")
+        r_context = Input(shape=(maxlen,), dtype="int32")
+
+        embedder = Embedding(max_features, embed_size,
+                             weights=[embed_matrix], trainable=True)
+
+        doc_embedding = embedder(document)
+        l_embedding = embedder(l_context)
+        r_embedding = embedder(r_context)
+
+        forward = LSTM(embed_size, return_sequences=True,
+                       dropout=0.1, recurrent_dropout=drop)(l_embedding)
+        backward = LSTM(embed_size, return_sequences=True, go_backwards=True,
+                        dropout=0.1, recurrent_dropout=drop)(r_embedding)
+
+        together = concatenate([forward, doc_embedding, backward], axis=2)
+        semantic = TimeDistributed(Dense(dsize, activation="tanh"))(together)
+        pool_rnn = GlobalMaxPool1D()(semantic)
+        output = Dense(6, activation="sigmoid")(pool_rnn)
+
+        model = keras.models.Model(inputs=[document, l_context, r_context],
+                                   outputs=output)
+        model.compile(optimizer="adadelta", loss="categorical_crossentropy",
+                      metrics=["accuracy"])
+        self.model = model
+        model_descirption = f'''RCNN model
+                        dense_size: {self.dense_size}
+                        embed_trainbale: {self.embed_trainable}
+                        lr: {self.lr}
+                        dropout: {self.dropout}
+                        optim_name: {self.optim_name}
+                        batch_size: {self.batch_size}'''
+        print(model_descirption)
+        print(model.summary())
+
