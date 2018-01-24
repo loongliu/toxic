@@ -33,12 +33,12 @@ class DataSource:
 
         print(f'read train data: {self.train_file} '
               f'and test data: {self.test_file}')
-        train_df = pd.read_csv(self.train_file)
-        test_df = pd.read_csv(self.test_file)
+        self.train_df = pd.read_csv(self.train_file)  # [0:3000]
+        self.test_df = pd.read_csv(self.test_file)  # [0:3000]
 
-        train_sentences = train_df["comment_text"].fillna(NAN_WORD).values
-        test_sentences = test_df["comment_text"].fillna(NAN_WORD).values
-        self.y_train = train_df[CLASSES].values
+        train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
+        test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
+        self.y_train = self.train_df[CLASSES].values
 
         print(f'train_sentences.shape {train_sentences.shape}')
         print(f'test_sentences.shape {test_sentences.shape}')

@@ -122,6 +122,7 @@ class CNNModel(BaseModel):
         self.filter_count = filter_count
         self.lr = lr
         self.dense_size = dense_size
+        self.build_model()
         self.description = 'CNN Model'
 
     def build_model(self):

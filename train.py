@@ -4,7 +4,8 @@ from sklearn.metrics import log_loss
 import datetime
 
 
-def _train_model(toxic_model, batch_size, train_x, train_y, val_x, val_y):
+def _train_model(toxic_model, batch_size, train_x, train_y,
+                 val_x, val_y, model_dir):
     best_loss = -1
     best_weights = None
     best_epoch = 0
@@ -13,8 +14,7 @@ def _train_model(toxic_model, batch_size, train_x, train_y, val_x, val_y):
     print(f'will train new model train.size {train_x.shape[0]},'
           f' val.size {val_x.shape[0]}')
 
-    # create new model hdf5 dir
-    model_dir = create_model_path()
+    hdf5_path = ''
     while True:
         toxic_model.model.fit(train_x, train_y, batch_size=batch_size,
                               epochs=1, verbose=0)
@@ -29,12 +29,14 @@ def _train_model(toxic_model, batch_size, train_x, train_y, val_x, val_y):
 
         print("Epoch {0} loss {1} best_loss {2}".format(current_epoch,
                                                         total_loss, best_loss))
-
         current_epoch += 1
         if total_loss < best_loss or best_loss == -1:
             best_loss = total_loss
             best_weights = toxic_model.model.get_weights()
             best_epoch = current_epoch
+
+            if hdf5_path != '':
+                os.remove(hdf5_path)
             model_name = toxic_model.description + \
                 f' epoch: {current_epoch} val_loss {best_loss:.5f}.hdf5'
             hdf5_path = os.path.join(model_dir, model_name)
@@ -56,7 +58,7 @@ def create_model_path():
     return model_dir
 
 
-def train(toxic_model, valid_split=0.1):
+def train(toxic_model, model_dir, valid_split=0.1,):
     print(f'call train funciton valid_split {valid_split}')
     x = toxic_model.data.x_train
     y = toxic_model.data.y_train
@@ -69,14 +71,16 @@ def train(toxic_model, valid_split=0.1):
     if toxic_model.model is None:
         raise ValueError('model not defined!')
     _train_model(toxic_model, toxic_model.batch_size,
-                 train_x, train_y, val_x, val_y)
+                 train_x, train_y, val_x, val_y, model_dir)
+    return toxic_model.model
 
 
-def train_folds(toxic_model, fold_count):
+def train_folds(toxic_model, fold_count, log_dir):
     print(f'call train_folds fold_count: {fold_count}')
     X = toxic_model.data.x_train
     y = toxic_model.data.y_train
     fold_size = len(X) // fold_count
+    origin_description = toxic_model.description
     models = []
     for fold_id in range(0, fold_count):
         fold_start = fold_size * fold_id
@@ -91,7 +95,8 @@ def train_folds(toxic_model, fold_count):
         val_x = X[fold_start:fold_end]
         val_y = y[fold_start:fold_end]
         toxic_model.build_model()
+        toxic_model.description = origin_description + f" fold {fold_id}"
         _train_model(toxic_model, toxic_model.batch_size,
-                     train_x, train_y, val_x, val_y)
+                     train_x, train_y, val_x, val_y, log_dir)
         models.append(toxic_model.model)
     return models

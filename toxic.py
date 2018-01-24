@@ -2,9 +2,9 @@ import data_source
 import model
 import log
 import train
-import keras
+import infer
 
-log.init_log()
+log_dir = log.init_log()
 
 embed_file = 'data/glove.6B/glove.6B.100d.txt'
 
@@ -12,16 +12,15 @@ toxic_data = data_source.DataSource(embed_file, 100, use_clean=True)
 
 print(toxic_data.description())
 
-print(1)
-
 train_model = model.CNNModel(toxic_data, batch_size=128)
 
-train.train_folds(train_model, 10)
-#
-# print(2)
+train_fold = False
 
-#
-# filepath = 'models/2018-01-23 17:07:19.278381/LSTM modelepoch: 4 val_loss 0.04920.hdf5'
-#
-# keras.models.load_model(filepath)
+if train_fold:
+    result_model = train.train_folds(train_model, 10, log_dir)
+else:
+    result_model = train.train(train_model, log_dir)
+print('train finish', 'result_model: ', result_model)
+result_file = train_model.description + '.csv'
+infer.infer_result(result_model, toxic_data, log_dir, result_file)
 
