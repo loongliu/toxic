@@ -27,5 +27,7 @@ __all__ = [average_res]
 
 if __name__ == '__main__':
     average_res(['logs/2018-01-24 10:37:06.073794/CNN Model divide1.2_0.060.csv',
-                 'logs/2018-01-23 22:04:29.044429/submit_devide1.2_0.060.csv',],
-                'logs/average_lstm_cnn.csv')
+                 'logs/2018-01-23 22:04:29.044429/submit_devide1.2_0.060.csv',
+                 'logs/2018-01-24 21:56:15.757980/RCNN Model fold 9_divide1.2_0.060.csv',
+                 'logs/2018-01-24 22:10:36.654893/double_gru_submit_0.059.csv'],
+                'logs/average_lstm_cnn_rcnn_doublegru.csv')
