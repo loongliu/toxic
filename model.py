@@ -159,7 +159,8 @@ class DoubleGRU(BaseModel):
 
 class CNNModel(BaseModel):
     def __init__(self, data, batch_size=64, embed_trainable=False,
-                 filter_count=128, lr=0.001, optim_name=None, dense_size=100):
+                 kernel_size=3, filter_count=128, lr=0.001,
+                 optim_name=None, dense_size=100):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'nadam'
@@ -168,6 +169,7 @@ class CNNModel(BaseModel):
         self.filter_count = filter_count
         self.lr = lr
         self.dense_size = dense_size
+        self.kernel_size = 3
         self.build_model()
         self.description = 'CNN Model'
 
@@ -177,7 +179,7 @@ class CNNModel(BaseModel):
         x = Embedding(data.max_feature, data.embed_dim,
                       weights=[data.embed_matrix],
                       trainable=self.embed_trainable)(inputs)
-        con1 = Conv1D(self.filter_count, 3, activation='relu')(x)
+        con1 = Conv1D(self.filter_count, self.kernel_size, activation='relu')(x)
         pool1 = GlobalMaxPooling1D()(con1)
 
         dense1 = Dense(self.dense_size, activation='relu')(pool1)
@@ -195,6 +197,7 @@ class CNNModel(BaseModel):
                 embed_trainbale: {self.embed_trainable}
                 filter_count: {self.filter_count}
                 lr: {self.lr}
+                kernel_size: {self.kernel_size}
                 optim_name: {self.optim_name}
                 batch_size: {self.batch_size}'''
         print(model_descirption)
