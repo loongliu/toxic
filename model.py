@@ -258,8 +258,9 @@ class RCNNModel(BaseModel):
         output = Dense(6, activation="sigmoid")(pool_rnn)
 
         model = keras.models.Model(inputs=document, outputs=output)
-        model.compile(optimizer="adadelta", loss="categorical_crossentropy",
-                      metrics=["accuracy"])
+        optimizer = get_optimizer(self.lr, self.optim_name)
+        model.compile(loss='binary_crossentropy', optimizer=optimizer,
+                      metrics=['accuracy'])
         self.model = model
         model_descirption = f'''RCNN model
                         dense_size: {self.dense_size}
