@@ -2,7 +2,7 @@ import keras
 from keras.layers import Dense, Input, LSTM, Embedding, Bidirectional
 from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
 from keras.layers import Conv1D, GlobalMaxPooling1D, TimeDistributed
-from keras.layers import TimeDistributed, Lambda, GRU
+from keras.layers import TimeDistributed, Lambda, GRU, CuDNNGRU
 from keras.layers.merge import concatenate
 
 from keras import optimizers as k_opt
@@ -134,10 +134,10 @@ class DoubleGRU(BaseModel):
         embedding_layer = Embedding(data.max_feature, data.embed_dim,
                                     weights=[data.embed_matrix],
                                     trainable=self.embed_trainable)(input_layer)
-        x = Bidirectional(GRU(data.embed_dim, return_sequences=True))(
+        x = Bidirectional(CuDNNGRU(data.embed_dim, return_sequences=True))(
             embedding_layer)
         x = Dropout(self.dropout)(x)
-        x = Bidirectional(GRU(data.embed_dim, return_sequences=False))(x)
+        x = Bidirectional(CuDNNGRU(data.embed_dim, return_sequences=False))(x)
         x = Dense(self.dense_size, activation="relu")(x)
         output_layer = Dense(6, activation="sigmoid")(x)
 
