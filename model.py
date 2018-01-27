@@ -4,7 +4,12 @@ from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
 from keras.layers import Conv1D, GlobalMaxPooling1D, TimeDistributed
 from keras.layers import TimeDistributed, Lambda, GRU, CuDNNGRU
 from keras.layers.merge import concatenate
+from keras.engine.topology import Layer
 
+from keras import initializers
+from keras import backend as K
+from keras import constraints
+from keras import regularizers
 from keras import optimizers as k_opt
 
 
@@ -275,3 +280,107 @@ class RCNNModel(BaseModel):
         print(model_descirption)
         print(model.summary())
 
+
+class AttLayer(Layer):
+    def __init__(self, init='glorot_uniform', kernel_regularizer=None,
+                 bias_regularizer=None, kernel_constraint=None,
+                 bias_constraint=None, **kwargs):
+        self.supports_masking = True
+        self.init = initializers.get(init)
+        self.kernel_initializer = initializers.get(init)
+
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.bias_regularizer = regularizers.get(kernel_regularizer)
+
+        self.kernel_constraint = constraints.get(kernel_constraint)
+        self.bias_constraint = constraints.get(bias_constraint)
+
+        super(AttLayer, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        assert len(input_shape) == 3
+        self.W = self.add_weight((input_shape[-1], 1),
+                                 initializer=self.kernel_initializer,
+                                 name='{}_W'.format(self.name),
+                                 regularizer=self.kernel_regularizer,
+                                 constraint=self.kernel_constraint)
+        self.b = self.add_weight((input_shape[1],),
+                                 initializer='zero',
+                                 name='{}_b'.format(self.name),
+                                 regularizer=self.bias_regularizer,
+                                 constraint=self.bias_constraint)
+        self.u = self.add_weight((input_shape[1],),
+                                 initializer=self.kernel_initializer,
+                                 name='{}_u'.format(self.name),
+                                 regularizer=self.kernel_regularizer,
+                                 constraint=self.kernel_constraint)
+
+        self.built = True
+
+    def compute_mask(self, input, input_mask=None):
+        return None
+
+    def call(self, x, mask=None):
+        uit = K.dot(x, self.W)  # (x, 40, 1)
+        uit = K.squeeze(uit, -1)  # (x, 40)
+        uit = uit + self.b  # (x, 40) + (40,)
+        uit = K.tanh(uit)  # (x, 40)
+
+        ait = uit * self.u  # (x, 40) * (40, 1) => (x, 1)
+        ait = K.exp(ait)  # (X, 1)
+
+        if mask is not None:
+            mask = K.cast(mask, K.floatx())  # (x, 40)
+            ait = mask * ait  # (x, 40) * (x, 40, )
+
+        ait /= K.cast(K.sum(ait, axis=1, keepdims=True) + K.epsilon(),
+                      K.floatx())
+        ait = K.expand_dims(ait)
+        weighted_input = x * ait
+        output = K.sum(weighted_input, axis=1)
+        return output
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], input_shape[-1])
+
+
+class AttenModel(BaseModel):
+    def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.001,
+                 optim_name=None, batch_size=128, dropout=0.1):
+        super().__init__(data, batch_size)
+        if optim_name is None:
+            optim_name = 'nadam'
+        self.lr = lr
+        self.embed_trainable = embed_trainable
+        self.dense_size = dense_size
+        self.optim_name = optim_name
+        self.dropout = dropout
+        self.build_model()
+        self.description = 'Double GRU'
+
+    def build_model(self):
+        data = self.data
+        input_layer = Input(shape=(data.seq_length,))
+        embedding_layer = Embedding(data.max_feature, data.embed_dim,
+                                    weights=[data.embed_matrix],
+                                    trainable=self.embed_trainable)(input_layer)
+        x = Bidirectional(GRU(data.embed_dim, return_sequences=True))(
+            embedding_layer)
+        attention = AttLayer()(x)
+        x = Dense(self.dense_size, activation="relu")(attention)
+        output_layer = Dense(6, activation="sigmoid")(x)
+
+        model = keras.models.Model(inputs=input_layer, outputs=output_layer)
+        optimizer = get_optimizer(self.lr, self.optim_name)
+        model.compile(loss='binary_crossentropy', optimizer=optimizer,
+                      metrics=['accuracy'])
+        self.model = model
+        model_descirption = f'''Attention model
+                        dense_size: {self.dense_size}
+                        embed_trainbale: {self.embed_trainable}
+                        lr: {self.lr}
+                        optim_name: {self.optim_name}
+                        batch_size: {self.batch_size}
+                        dropout: {self.dropout}'''
+        print(model_descirption)
+        print(model.summary())

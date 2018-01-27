@@ -6,14 +6,14 @@ import infer
 
 log_dir = log.init_log()
 
-embed_file = 'data/glove.840B.300d.txt'
+embed_file = 'data/crawl-300d-2M.vec'
 
 toxic_data = data_source.DataSource(embed_file, 300, use_clean=False)
 
 print(toxic_data.description())
 
-train_model = model.DoubleGRU(toxic_data, lr=0.0005,
-                              batch_size=128, embed_trainable=True)
+train_model = model.AttenModel(toxic_data, lr=0.0005,
+                               batch_size=128, embed_trainable=True)
 
 train_fold = True
 
