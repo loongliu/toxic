@@ -356,7 +356,7 @@ class AttenModel(BaseModel):
         self.optim_name = optim_name
         self.dropout = dropout
         self.build_model()
-        self.description = 'Double GRU'
+        self.description = 'Attention Model'
 
     def build_model(self):
         data = self.data
