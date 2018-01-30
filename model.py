@@ -356,7 +356,7 @@ class AttenModel(BaseModel):
         self.optim_name = optim_name
         self.dropout = dropout
         self.build_model()
-        self.description = 'Attention Model'
+        self.description = 'Attention Model with dropout'
 
     def build_model(self):
         data = self.data
@@ -364,8 +364,9 @@ class AttenModel(BaseModel):
         embedding_layer = Embedding(data.max_feature, data.embed_dim,
                                     weights=[data.embed_matrix],
                                     trainable=self.embed_trainable)(input_layer)
-        x = Bidirectional(GRU(data.embed_dim, return_sequences=True))(
-            embedding_layer)
+        x = Bidirectional(GRU(data.embed_dim, return_sequences=True,
+                              recurrent_dropout=self.dropout,
+                              dropout=self.dropout))(embedding_layer)
         attention = AttLayer()(x)
         x = Dense(self.dense_size, activation="relu")(attention)
         output_layer = Dense(6, activation="sigmoid")(x)
