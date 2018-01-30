@@ -5,10 +5,9 @@ from keras.preprocessing.sequence import pad_sequences
 
 path = 'data/'
 
-TRAIN_DATA_FILE = f'{path}train.csv'
+TRAIN_DATA_FILE = f'{path}pre_train.csv'
 TEST_DATA_FILE = f'{path}test.csv'
-TRAIN_CLEAN_DATA_FILE = f'{path}train_clean.csv'
-TEST_CLEAN_DATA_FILE = f'{path}test_clean.csv'
+VALID_DATA_FILE = f'{path}valid.csv'
 
 NAN_WORD = "_NAN_"
 
@@ -17,35 +16,37 @@ CLASSES = ["toxic", "severe_toxic", "obscene",
 
 
 class DataSource:
-    def __init__(self, embed_file, embed_dim, use_clean=True,
-                 max_feature=20000):
-        self.use_clean = use_clean
+    def __init__(self, embed_file, embed_dim, max_feature=20000):
         self._embed_file = embed_file
         self.embed_dim = embed_dim
         self.max_feature = max_feature
-        if use_clean:
-            self.train_file = TRAIN_CLEAN_DATA_FILE
-            self.test_file = TEST_CLEAN_DATA_FILE
-        else:
-            self.train_file = TRAIN_DATA_FILE
-            self.test_file = TEST_DATA_FILE
+        self.train_file = TRAIN_DATA_FILE
+        self.test_file = TEST_DATA_FILE
+        self.valid_file = VALID_DATA_FILE
 
         print(f'read train data: {self.train_file} '
+              f'and valid data: {self.valid_file}'
               f'and test data: {self.test_file}')
         self.train_df = pd.read_csv(self.train_file)  # [0:3000]
         self.test_df = pd.read_csv(self.test_file)  # [0:3000]
+        self.valid_df = pd.read_csv(self.valid_file)
 
         train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
         test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
+        valid_sentences = self.valid_df["comment_text"].fillna(NAN_WORD).values
         self.y_train = self.train_df[CLASSES].values
+        self.y_valid = self.valid_df[CLASSES].values
 
         print(f'train_sentences.shape {train_sentences.shape}')
         print(f'test_sentences.shape {test_sentences.shape}')
+        print(f'valid_sentences.shape {valid_sentences.shape}')
         print(f'y_train.shape {self.y_train.shape}')
+        print(f'y_valid.shape {self.y_valid.shape}')
 
         print('tokenzie sentence from train and test')
-        self.x_train, self.x_test, words_dict, self.seq_length = \
-            tokenize_sentences(train_sentences, test_sentences, max_feature)
+        self.x_train, self.x_valid, self.x_test, words_dict, self.seq_length = \
+            tokenize_sentences(train_sentences, valid_sentences,
+                               test_sentences, max_feature)
 
         print(f'read embedding file {embed_file}')
         embeddings_index = read_embedding_list(self._embed_file, embed_dim)
@@ -74,6 +75,7 @@ class DataSource:
         return f'''data source use 
         train data: {self.train_file}
         test data: {self.test_file}
+        valid data: {self.valid_file}
         embed_file: {self._embed_file}
         embed_dim: {self.embed_dim}
         max_words: {self.max_feature}
@@ -81,20 +83,20 @@ class DataSource:
         '''
 
 
-def tokenize_sentences(train_sentences, test_sentences, max_word):
+def tokenize_sentences(train_sentences, valid_sentences,
+                       test_sentences, max_word):
     tokenizer = Tokenizer(num_words=max_word)
     tokenizer.fit_on_texts(list(train_sentences))
     list_tokenized_train = tokenizer.texts_to_sequences(train_sentences)
     list_tokenized_test = tokenizer.texts_to_sequences(test_sentences)
-    total_count = len(list_tokenized_train) + len(list_tokenized_test)
-    w = sum(map(len, list_tokenized_train)) + sum(map(len, list_tokenized_test))
-    seq_len = 2 * int(w/total_count)
-    seq_len = 100
+    list_tokenized_valid = tokenizer.texts_to_sequences(valid_sentences)
+    seq_len = 150
     print(f'will use seq_len: {seq_len}')
     x_train = pad_sequences(list_tokenized_train, maxlen=seq_len)
     x_test = pad_sequences(list_tokenized_test, maxlen=seq_len)
+    x_valid = pad_sequences(list_tokenized_valid, maxlen=seq_len)
 
-    return x_train, x_test, tokenizer.word_index, seq_len
+    return x_train, x_valid, x_test, tokenizer.word_index, seq_len
 
 
 def read_embedding_list(file_path, embed_dim):
@@ -114,5 +116,5 @@ def read_embedding_list(file_path, embed_dim):
 
 
 if __name__ == '__main__':
-    embed_file = 'data/glove.840B.300d.txt'
-    toxic_data = DataSource(embed_file, 300, use_clean=True)
+    embed_f = 'data/glove.840B.300d.txt'
+    toxic_data = DataSource(embed_f, 300)

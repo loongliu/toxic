@@ -58,16 +58,12 @@ def create_model_path():
     return model_dir
 
 
-def train(toxic_model, model_dir, valid_split=0.1,):
-    print(f'call train funciton valid_split {valid_split}')
-    x = toxic_model.data.x_train
-    y = toxic_model.data.y_train
-    size = x.shape[0]
-    split_index = int(size * valid_split)
-    val_x = x[:split_index]
-    val_y = y[:split_index]
-    train_x = x[split_index:]
-    train_y = y[split_index:]
+def train(toxic_model, model_dir):
+    print(f'call train funciton')
+    val_x = toxic_model.data.x_valid
+    val_y = toxic_model.data.y_valid
+    train_x = toxic_model.data.x_train
+    train_y = toxic_model.data.y_train
     if toxic_model.model is None:
         raise ValueError('model not defined!')
     _train_model(toxic_model, toxic_model.batch_size,
