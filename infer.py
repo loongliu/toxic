@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import os
 import keras
+from model import AttLayer
 
 # keras.models.load_model(model_path)
 
@@ -50,11 +51,11 @@ if __name__ == '__main__':
         'logs/2018-01-24 22:10:36.654893/Double GRU fold 7 epoch: 2 val_loss 0.04510.hdf5',
         'logs/2018-01-24 22:10:36.654893/Double GRU fold 8 epoch: 2 val_loss 0.04363.hdf5',]
 
-    model_list = [keras.models.load_model(path) for path in model_path_list]
+    model_list = [keras.models.load_model(path, custom_objects={'AttLayer':AttLayer}) for path in model_path_list]
     result_path = 'logs/2018-01-24 22:10:36.654893'
 
-    embed_file = 'data/glove.6B/glove.6B.100d.txt'
-    toxic_data = data_source.DataSource(embed_file, 100, use_clean=True)
+    embed_file = 'data/crawl-300d-2M.vec'
+    toxic_data = data_source.DataSource(embed_file, 300)
 
     infer_result(model_list, toxic_data, result_path, 'double_gru_submit.csv')
 
