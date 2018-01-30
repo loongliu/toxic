@@ -346,7 +346,7 @@ class AttLayer(Layer):
 
 class AttenModel(BaseModel):
     def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.0005,
-                 optim_name=None, batch_size=128, dropout=0.5):
+                 optim_name=None, batch_size=256, dropout=0.5):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'nadam'
