@@ -8,14 +8,14 @@ log_dir = log.init_log()
 
 embed_file = 'data/crawl-300d-2M.vec'
 
-toxic_data = data_source.DataSource(embed_file, 300, use_clean=False)
+toxic_data = data_source.DataSource(embed_file, 300)
 
 print(toxic_data.description())
 
 train_model = model.AttenModel(toxic_data, lr=0.0005,
                                batch_size=128, embed_trainable=True)
 
-train_fold = True
+train_fold = False
 
 if train_fold:
     result_model = train.train_folds(train_model, 10, log_dir)
