@@ -12,8 +12,7 @@ toxic_data = data_source.DataSource(embed_file, 300)
 
 print(toxic_data.description())
 
-train_model = model.AttenModel(toxic_data, lr=0.0005,
-                               batch_size=128, embed_trainable=True)
+train_model = model.AttenModel(toxic_data)
 
 train_fold = False
 
