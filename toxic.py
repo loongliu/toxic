@@ -12,7 +12,7 @@ toxic_data = data_source.DataSource(embed_file, 300)
 
 print(toxic_data.description())
 
-train_model = model.AttenModel(toxic_data)
+train_model = model.DoubleGRU(toxic_data)
 
 train_fold = False
 

@@ -121,16 +121,17 @@ class Lstm(BaseModel):
 
 
 class DoubleGRU(BaseModel):
-    def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.0005,
-                 optim_name=None, batch_size=256, dropout=0.5):
+    def __init__(self, data, dense_size=32, embed_trainable=False, lr=0.0005,
+                 optim_name=None, batch_size=256, dropout=0.3, recur_unit=64):
         super().__init__(data, batch_size)
         if optim_name is None:
-            optim_name = 'nadam'
+            optim_name = 'rms'
         self.lr = lr
         self.embed_trainable = embed_trainable
         self.dense_size = dense_size
         self.optim_name = optim_name
         self.dropout = dropout
+        self.recur_unit = recur_unit
         self.build_model()
         self.description = 'Double GRU'
 
@@ -140,10 +141,10 @@ class DoubleGRU(BaseModel):
         embedding_layer = Embedding(data.max_feature, data.embed_dim,
                                     weights=[data.embed_matrix],
                                     trainable=self.embed_trainable)(input_layer)
-        x = Bidirectional(CuDNNGRU(data.embed_dim, return_sequences=True))(
+        x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=True))(
             embedding_layer)
         x = Dropout(self.dropout)(x)
-        x = Bidirectional(CuDNNGRU(data.embed_dim, return_sequences=False))(x)
+        x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=False))(x)
         x = Dense(self.dense_size, activation="relu")(x)
         output_layer = Dense(6, activation="sigmoid")(x)
 

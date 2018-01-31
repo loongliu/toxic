@@ -5,7 +5,7 @@ from keras.preprocessing.sequence import pad_sequences
 
 path = 'data/'
 
-TRAIN_DATA_FILE = f'{path}pre_train.csv'
+TRAIN_DATA_FILE = f'{path}train.csv'
 TEST_DATA_FILE = f'{path}test.csv'
 VALID_DATA_FILE = f'{path}valid.csv'
 
@@ -16,32 +16,40 @@ CLASSES = ["toxic", "severe_toxic", "obscene",
 
 
 class DataSource:
-    def __init__(self, embed_file, embed_dim, max_feature=20000):
+    def __init__(self, embed_file, embed_dim,
+                 max_feature=20000, extra_valid=False):
         self._embed_file = embed_file
         self.embed_dim = embed_dim
         self.max_feature = max_feature
         self.train_file = TRAIN_DATA_FILE
         self.test_file = TEST_DATA_FILE
-        self.valid_file = VALID_DATA_FILE
 
         print(f'read train data: {self.train_file} '
-              f'and valid data: {self.valid_file}'
               f'and test data: {self.test_file}')
         self.train_df = pd.read_csv(self.train_file)  # [0:3000]
         self.test_df = pd.read_csv(self.test_file)  # [0:3000]
-        self.valid_df = pd.read_csv(self.valid_file)
 
         train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
         test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
-        valid_sentences = self.valid_df["comment_text"].fillna(NAN_WORD).values
         self.y_train = self.train_df[CLASSES].values
-        self.y_valid = self.valid_df[CLASSES].values
 
         print(f'train_sentences.shape {train_sentences.shape}')
         print(f'test_sentences.shape {test_sentences.shape}')
-        print(f'valid_sentences.shape {valid_sentences.shape}')
         print(f'y_train.shape {self.y_train.shape}')
-        print(f'y_valid.shape {self.y_valid.shape}')
+
+        if extra_valid:
+            self.valid_file = VALID_DATA_FILE
+            print(f'and valid data: {self.valid_file}')
+            self.valid_df = pd.read_csv(self.valid_file)
+            valid_sentences = self.valid_df["comment_text"]\
+                .fillna(NAN_WORD).values
+            self.y_valid = self.valid_df[CLASSES].values
+            print(f'valid_sentences.shape {valid_sentences.shape}')
+            print(f'y_valid.shape {self.y_valid.shape}')
+        else:
+            valid_sentences = None
+            self.y_valid = None
+            self.valid_file = None
 
         print('tokenzie sentence from train and test')
         self.x_train, self.x_valid, self.x_test, words_dict, self.seq_length = \
@@ -89,13 +97,15 @@ def tokenize_sentences(train_sentences, valid_sentences,
     tokenizer.fit_on_texts(list(train_sentences))
     list_tokenized_train = tokenizer.texts_to_sequences(train_sentences)
     list_tokenized_test = tokenizer.texts_to_sequences(test_sentences)
-    list_tokenized_valid = tokenizer.texts_to_sequences(valid_sentences)
-    seq_len = 150
+    seq_len = 500
     print(f'will use seq_len: {seq_len}')
     x_train = pad_sequences(list_tokenized_train, maxlen=seq_len)
     x_test = pad_sequences(list_tokenized_test, maxlen=seq_len)
-    x_valid = pad_sequences(list_tokenized_valid, maxlen=seq_len)
-
+    if valid_sentences is not None:
+        list_tokenized_valid = tokenizer.texts_to_sequences(valid_sentences)
+        x_valid = pad_sequences(list_tokenized_valid, maxlen=seq_len)
+    else:
+        x_valid = None
     return x_train, x_valid, x_test, tokenizer.word_index, seq_len
 
 
