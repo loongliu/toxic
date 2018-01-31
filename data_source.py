@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
+import nltk
 
 path = 'data/'
 
@@ -9,6 +8,8 @@ TRAIN_DATA_FILE = f'{path}train.csv'
 TEST_DATA_FILE = f'{path}test.csv'
 VALID_DATA_FILE = f'{path}valid.csv'
 
+UNKNOWN_WORD = "_UNK_"
+END_WORD = "_END_"
 NAN_WORD = "_NAN_"
 
 CLASSES = ["toxic", "severe_toxic", "obscene",
@@ -16,13 +17,14 @@ CLASSES = ["toxic", "severe_toxic", "obscene",
 
 
 class DataSource:
-    def __init__(self, embed_file, embed_dim,
+    def __init__(self, embed_file, embed_dim, seq_length=500,
                  max_feature=20000, extra_valid=False):
         self._embed_file = embed_file
         self.embed_dim = embed_dim
         self.max_feature = max_feature
         self.train_file = TRAIN_DATA_FILE
         self.test_file = TEST_DATA_FILE
+        self.seq_length = seq_length
 
         print(f'read train data: {self.train_file} '
               f'and test data: {self.test_file}')
@@ -40,7 +42,7 @@ class DataSource:
         if extra_valid:
             self.valid_file = VALID_DATA_FILE
             print(f'and valid data: {self.valid_file}')
-            self.valid_df = pd.read_csv(self.valid_file)
+            self.valid_df = pd.read_csv(self.valid_file)  # [0:3000]
             valid_sentences = self.valid_df["comment_text"]\
                 .fillna(NAN_WORD).values
             self.y_valid = self.valid_df[CLASSES].values
@@ -51,33 +53,60 @@ class DataSource:
             self.y_valid = None
             self.valid_file = None
 
-        print('tokenzie sentence from train and test')
-        self.x_train, self.x_valid, self.x_test, words_dict, self.seq_length = \
-            tokenize_sentences(train_sentences, valid_sentences,
-                               test_sentences, max_feature)
+        print("Tokenizing sentences in train set...")
+        tokenized_sentences_train, words_dict = tokenize_sentences(
+            train_sentences, {})
 
-        print(f'read embedding file {embed_file}')
-        embeddings_index = read_embedding_list(self._embed_file, embed_dim)
+        print("Tokenizing sentences in test set...")
+        tokenized_sentences_test, words_dict = tokenize_sentences(
+            test_sentences, words_dict)
 
-        all_embs = np.stack(embeddings_index.values())
-        emb_mean, emb_std = all_embs.mean(), all_embs.std()
+        if extra_valid:
+            tokenized_sentences_valid, words_dict = tokenize_sentences(
+                valid_sentences, words_dict)
+        else:
+            tokenized_sentences_valid = None
 
-        nb_words = min(max_feature, len(words_dict)+1)
-        self.max_feature = nb_words
-        embedding_matrix = np.random.normal(emb_mean, emb_std,
-                                            (nb_words, embed_dim))
-        in_word = 0
-        total_word = len(words_dict)
-        for word, i in words_dict.items():
-            embedding_vector = embeddings_index.get(word)
-            if embedding_vector is not None:
-                in_word = in_word + 1
-            if i >= max_feature:
-                continue
-            if embedding_vector is not None:
-                embedding_matrix[i] = embedding_vector
-        self.embed_matrix = embedding_matrix
-        print(f'found {total_word} words in data, {in_word} words in embedding')
+        words_dict[UNKNOWN_WORD] = len(words_dict)
+
+        print("Loading embeddings...")
+        embedding_list, embedding_word_dict = read_embedding_list(embed_file,
+                                                                  embed_dim)
+        embedding_size = embed_dim
+        print("Preparing data...")
+        embedding_list, embedding_word_dict = clear_embedding_list(
+            embedding_list, embedding_word_dict, words_dict)
+
+        embedding_word_dict[UNKNOWN_WORD] = len(embedding_word_dict)
+        embedding_list.append([0.] * embedding_size)
+        embedding_word_dict[END_WORD] = len(embedding_word_dict)
+        embedding_list.append([-1.] * embedding_size)
+
+        self.embed_matrix = np.array(embedding_list)
+        self.max_feature = self.embed_matrix.shape[0]
+
+        id_to_word = dict((index, word) for word, index in words_dict.items())
+        train_list_of_token_ids = convert_tokens_to_ids(
+            tokenized_sentences_train,
+            id_to_word,
+            embedding_word_dict,
+            self.seq_length)
+        test_list_of_token_ids = convert_tokens_to_ids(
+            tokenized_sentences_test,
+            id_to_word,
+            embedding_word_dict,
+            self.seq_length)
+        self.x_train = np.array(train_list_of_token_ids)
+        self.x_test = np.array(test_list_of_token_ids)
+        if extra_valid:
+            valid_list_of_token_ids = convert_tokens_to_ids(
+                tokenized_sentences_valid,
+                id_to_word,
+                embedding_word_dict,
+                self.seq_length)
+            self.x_valid = np.array(valid_list_of_token_ids)
+        else:
+            self.x_valid = None
 
     def description(self):
         return f'''data source use 
@@ -91,38 +120,75 @@ class DataSource:
         '''
 
 
-def tokenize_sentences(train_sentences, valid_sentences,
-                       test_sentences, max_word):
-    tokenizer = Tokenizer(num_words=max_word)
-    tokenizer.fit_on_texts(list(train_sentences))
-    list_tokenized_train = tokenizer.texts_to_sequences(train_sentences)
-    list_tokenized_test = tokenizer.texts_to_sequences(test_sentences)
-    seq_len = 500
-    print(f'will use seq_len: {seq_len}')
-    x_train = pad_sequences(list_tokenized_train, maxlen=seq_len)
-    x_test = pad_sequences(list_tokenized_test, maxlen=seq_len)
-    if valid_sentences is not None:
-        list_tokenized_valid = tokenizer.texts_to_sequences(valid_sentences)
-        x_valid = pad_sequences(list_tokenized_valid, maxlen=seq_len)
-    else:
-        x_valid = None
-    return x_train, x_valid, x_test, tokenizer.word_index, seq_len
+def tokenize_sentences(sentences, words_dict):
+    tokenized_sentences = []
+    for sentence in sentences:
+        if hasattr(sentence, "decode"):
+            sentence = sentence.decode("utf-8")
+        tokens = nltk.tokenize.word_tokenize(sentence)
+        result = []
+        for word in tokens:
+            word = word.lower()
+            if word not in words_dict:
+                words_dict[word] = len(words_dict)
+            word_index = words_dict[word]
+            result.append(word_index)
+        tokenized_sentences.append(result)
+    return tokenized_sentences, words_dict
 
 
 def read_embedding_list(file_path, embed_dim):
-    res = {}
+    embedding_word_dict = {}
+    embedding_list = []
     for o in open(file_path, encoding='utf-8'):
         try:
             arr = o.strip().split()
             length = len(arr)
             if length != embed_dim+1:
                 continue
-            word = ''.join(arr[0:length-embed_dim])
-            res[word] = np.asarray(arr[length-embed_dim:], dtype='float32')
+            word = arr[0]
+            embedding = np.array([float(num) for num in arr[1:]])
+            embedding_list.append(embedding)
+            embedding_word_dict[word] = len(embedding_word_dict)
         except Exception as e:
             print(e)
             print(o)
-    return res
+
+    embedding_list = np.array(embedding_list)
+    return embedding_list, embedding_word_dict
+
+
+def clear_embedding_list(embedding_list, embedding_word_dict, words_dict):
+    cleared_embedding_list = []
+    cleared_embedding_word_dict = {}
+
+    for word in words_dict:
+        if word not in embedding_word_dict:
+            continue
+        word_id = embedding_word_dict[word]
+        row = embedding_list[word_id]
+        cleared_embedding_list.append(row)
+        cleared_embedding_word_dict[word] = len(cleared_embedding_word_dict)
+
+    return cleared_embedding_list, cleared_embedding_word_dict
+
+
+def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, sentences_length):
+    words_train = []
+
+    for sentence in tokenized_sentences:
+        current_words = []
+        for word_index in sentence:
+            word = words_list[word_index]
+            word_id = embedding_word_dict.get(word, len(embedding_word_dict) - 2)
+            current_words.append(word_id)
+
+        if len(current_words) >= sentences_length:
+            current_words = current_words[:sentences_length]
+        else:
+            current_words += [len(embedding_word_dict) - 1] * (sentences_length - len(current_words))
+        words_train.append(current_words)
+    return words_train
 
 
 if __name__ == '__main__':
