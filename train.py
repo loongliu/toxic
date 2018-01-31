@@ -1,12 +1,12 @@
 import os
 import numpy as np
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss, roc_auc_score
 import datetime
 
 
 def _train_model(toxic_model, batch_size, train_x, train_y,
                  val_x, val_y, model_dir):
-    best_loss = -1
+    best_auc = -1
     best_weights = None
     best_epoch = 0
 
@@ -21,24 +21,28 @@ def _train_model(toxic_model, batch_size, train_x, train_y,
         y_pred = toxic_model.model.predict(val_x, batch_size=batch_size)
 
         total_loss = 0
+        total_auc = 0
         for j in range(6):
             loss = log_loss(val_y[:, j], y_pred[:, j])
             total_loss += loss
+            auc = roc_auc_score(val_y[:, j], y_pred[:, j])
+            total_auc += auc
 
         total_loss /= 6.
+        total_auc /= 6.
 
-        print("Epoch {0} loss {1} best_loss {2}".format(current_epoch,
-                                                        total_loss, best_loss))
+        print("Epoch {0} loss {1} auc {2} best_auc {3}".
+              format(current_epoch, total_loss, total_auc, best_auc))
         current_epoch += 1
-        if total_loss < best_loss or best_loss == -1:
-            best_loss = total_loss
+        if total_auc > best_auc:
+            best_auc = total_auc
             best_weights = toxic_model.model.get_weights()
             best_epoch = current_epoch
 
             if hdf5_path != '':
                 os.remove(hdf5_path)
             model_name = toxic_model.description + \
-                f' epoch: {current_epoch} val_loss {best_loss:.5f}.hdf5'
+                f' epoch: {current_epoch} val_auc {best_auc:.5f}.hdf5'
             hdf5_path = os.path.join(model_dir, model_name)
             toxic_model.model.save(hdf5_path)
         else:
