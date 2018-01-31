@@ -7,6 +7,7 @@ import datetime
 def _train_model(toxic_model, batch_size, train_x, train_y,
                  val_x, val_y, model_dir):
     best_auc = -1
+    best_loss = 2
     best_weights = None
     best_epoch = 0
 
@@ -31,11 +32,12 @@ def _train_model(toxic_model, batch_size, train_x, train_y,
         total_loss /= 6.
         total_auc /= 6.
 
-        print("Epoch {0} loss {1} auc {2} best_auc {3}".
-              format(current_epoch, total_loss, total_auc, best_auc))
+        print("Epoch {0} loss {1} auc {2} best_loss {3} best_auc {4}".
+              format(current_epoch, total_loss, total_auc, best_loss, best_auc))
         current_epoch += 1
-        if total_auc > best_auc:
+        if total_loss < best_loss:
             best_auc = total_auc
+            best_loss = total_loss
             best_weights = toxic_model.model.get_weights()
             best_epoch = current_epoch
 
