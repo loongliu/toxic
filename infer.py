@@ -24,7 +24,6 @@ def infer_result(models, toxic_data, result_dir, result_name='submit_devide1.2_0
         test_predicts *= fold_predict
 
     test_predicts **= (1. / len(test_predicts_list))
-    test_predicts = test_predicts / 1.2
 
     test_ids = toxic_data.test_df["id"].values
     test_ids = test_ids.reshape((len(test_ids), 1))
