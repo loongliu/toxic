@@ -121,8 +121,8 @@ class Lstm(BaseModel):
 
 
 class DoubleGRU(BaseModel):
-    def __init__(self, data, dense_size=32, embed_trainable=False, lr=0.0005,
-                 optim_name=None, batch_size=256, dropout=0.3, recur_unit=64):
+    def __init__(self, data, dense_size=60, embed_trainable=False, lr=0.001,
+                 optim_name=None, batch_size=256, dropout=0.5, recur_unit=100):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'rms'

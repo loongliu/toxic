@@ -17,7 +17,7 @@ CLASSES = ["toxic", "severe_toxic", "obscene",
 
 
 class DataSource:
-    def __init__(self, embed_file, embed_dim, seq_length=500,
+    def __init__(self, embed_file, embed_dim, seq_length=200,
                  max_feature=20000, extra_valid=False):
         self._embed_file = embed_file
         self.embed_dim = embed_dim
