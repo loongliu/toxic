@@ -165,9 +165,9 @@ class DoubleGRU(BaseModel):
 
 
 class CNNModel(BaseModel):
-    def __init__(self, data, batch_size=128, embed_trainable=False,
-                 kernel_sizes=None, filter_count=16, lr=0.001,
-                 optim_name=None, dense_size=20, dropout=0.5):
+    def __init__(self, data, batch_size=64, embed_trainable=False,
+                 kernel_size=3, filter_count=128, lr=0.001,
+                 optim_name=None, dense_size=100):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'nadam'
@@ -176,8 +176,7 @@ class CNNModel(BaseModel):
         self.filter_count = filter_count
         self.lr = lr
         self.dense_size = dense_size
-        self.kernel_sizes = kernel_sizes or [3, 5, 8]
-        self.dropout = dropout
+        self.kernel_size = kernel_size
         self.build_model()
         self.description = 'CNN Model'
 
@@ -187,21 +186,10 @@ class CNNModel(BaseModel):
         x = Embedding(data.max_feature, data.embed_dim,
                       weights=[data.embed_matrix],
                       trainable=self.embed_trainable)(inputs)
-        x = Dropout(self.dropout)(x)
-        conv_blocks = []
-        for sz in self.kernel_sizes:
-            conv = Convolution1D(filters=self.filter_count,
-                                 kernel_size=sz,
-                                 padding="valid",
-                                 activation="relu",
-                                 strides=1)(x)
-            conv = MaxPooling1D(pool_size=2)(conv)
-            conv = Flatten()(conv)
-            conv_blocks.append(conv)
+        con1 = Conv1D(self.filter_count, self.kernel_size, activation='relu')(x)
+        pool1 = GlobalMaxPooling1D()(con1)
 
-        z = Concatenate()(conv_blocks)
-        z = Dropout(self.dropout)(z)
-        dense1 = Dense(self.dense_size, activation='relu')(z)
+        dense1 = Dense(self.dense_size, activation='relu')(pool1)
 
         output = Dense(units=6, activation='sigmoid')(dense1)
 
@@ -216,7 +204,7 @@ class CNNModel(BaseModel):
                 embed_trainbale: {self.embed_trainable}
                 filter_count: {self.filter_count}
                 lr: {self.lr}
-                kernel_size: {self.kernel_sizes}
+                kernel_size: {self.kernel_size}
                 optim_name: {self.optim_name}
                 batch_size: {self.batch_size}'''
         print(model_descirption)
