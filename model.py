@@ -257,10 +257,11 @@ class RCNNModel(BaseModel):
         l_embedding = embedder(left_context)
         r_embedding = embedder(right_context)
 
-        forward = LSTM(embed_size, return_sequences=True,
-                       dropout=0.1, recurrent_dropout=drop)(l_embedding)
-        backward = LSTM(embed_size, return_sequences=True, go_backwards=True,
-                        dropout=0.1, recurrent_dropout=drop)(r_embedding)
+        forward = CuDNNGRU(embed_size, return_sequences=True,
+                           dropout=0.1, recurrent_dropout=drop)(l_embedding)
+        backward = CuDNNGRU(embed_size, return_sequences=True,
+                            go_backwards=True, dropout=0.1,
+                            recurrent_dropout=drop)(r_embedding)
 
         together = concatenate([forward, doc_embedding, backward], axis=2)
         semantic = TimeDistributed(Dense(dsize, activation="tanh"))(together)
