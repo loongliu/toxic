@@ -15,11 +15,11 @@ def average_res(files, output, weights=None):
         df = pd.read_csv(file)
         if p_res is None:
             p_res = df.copy()
-            p_res[label_cols] = df[label_cols] * weight
+            p_res[label_cols] = df[label_cols] ** weight
         else:
-            p_res[label_cols] += df[label_cols] * weight
+            p_res[label_cols] += df[label_cols] ** weight
     if p_res is not None:
-        p_res[label_cols] = p_res[label_cols] / sum(weights)
+        p_res[label_cols] = p_res[label_cols] ** (1. / sum(weights))
         p_res.to_csv(output, index=False)
 
 
