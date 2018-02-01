@@ -165,7 +165,7 @@ class DoubleGRU(BaseModel):
 
 
 class CNNModel(BaseModel):
-    def __init__(self, data, batch_size=64, embed_trainable=False,
+    def __init__(self, data, batch_size=256, embed_trainable=False,
                  kernel_size=3, filter_count=128, lr=0.001,
                  optim_name=None, dense_size=100):
         super().__init__(data, batch_size)
