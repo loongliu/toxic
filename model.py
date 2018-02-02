@@ -12,6 +12,7 @@ from keras import backend as K
 from keras import constraints
 from keras import regularizers
 from keras import optimizers as k_opt
+import numpy as np
 
 
 def get_optimizer(lr, optim_name):
@@ -388,3 +389,15 @@ class AttenModel(BaseModel):
                         dropout: {self.dropout}'''
         print(model_descirption)
         print(model.summary())
+
+
+if __name__ == '__main__':
+    class Data:
+        def __init__(self):
+            self.seq_length = 10
+            self.max_feature = 20
+            self.embed_dim = 30
+            self.embed_matrix = np.ones((self.max_feature, self.embed_dim))
+
+    data = Data()
+    model = AttenModel(data)
