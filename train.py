@@ -64,7 +64,7 @@ def create_model_path():
 
 def train(toxic_model, model_dir, valid_split=0.1):
     print(f'call train funciton')
-    if toxic_model.data.x_valid:
+    if toxic_model.data.x_valid is not None:
         val_x = toxic_model.data.x_valid
         val_y = toxic_model.data.y_valid
         train_x = toxic_model.data.x_train
