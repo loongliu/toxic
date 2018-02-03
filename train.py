@@ -23,7 +23,7 @@ def _train_model(toxic_model, batch_size, train_x, train_y,
         total_loss = 0
         total_auc = 0
         for j in range(6):
-            loss = log_loss(val_y[:, j], y_pred[:, j])
+            loss = log_loss(val_y[:, j], y_pred[:, j], eps=1e-5)
             total_loss += loss
             auc = roc_auc_score(val_y[:, j], y_pred[:, j])
             total_auc += auc
