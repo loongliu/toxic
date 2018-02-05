@@ -168,7 +168,7 @@ class DoubleGRU(BaseModel):
 class CNNModel(BaseModel):
     def __init__(self, data, batch_size=256, embed_trainable=False,
                  kernel_size=3, filter_count=128, lr=0.001,
-                 optim_name=None, dense_size=100):
+                 optim_name=None, dense_size=50):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'nadam'
@@ -188,7 +188,9 @@ class CNNModel(BaseModel):
                       weights=[data.embed_matrix],
                       trainable=self.embed_trainable)(inputs)
         con1 = Conv1D(self.filter_count, self.kernel_size, activation='relu')(x)
-        pool1 = GlobalMaxPooling1D()(con1)
+        con2 = Conv1D(256, 5,
+                      activation='relu')(con1)
+        pool1 = GlobalMaxPooling1D()(con2)
 
         dense1 = Dense(self.dense_size, activation='relu')(pool1)
 
@@ -398,4 +400,4 @@ if __name__ == '__main__':
             self.embed_matrix = np.ones((self.max_feature, self.embed_dim))
 
     data = Data()
-    model = AttenModel(data)
+    model = CNNModel(data)

@@ -12,9 +12,9 @@ toxic_data = data_source.DataSource(embed_file, 300)
 
 print(toxic_data.description())
 
-train_model = model.DoubleGRU(toxic_data)
+train_model = model.CNNModel(toxic_data)
 
-train_fold = False
+train_fold = True
 
 if train_fold:
     result_model = train.train_folds(train_model, 10, log_dir)
