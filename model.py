@@ -258,11 +258,9 @@ class RCNNModel(BaseModel):
         l_embedding = embedder(left_context)
         r_embedding = embedder(right_context)
 
-        forward = CuDNNGRU(embed_size, return_sequences=True,
-                           dropout=0.1, recurrent_dropout=drop)(l_embedding)
+        forward = CuDNNGRU(embed_size, return_sequences=True)(l_embedding)
         backward = CuDNNGRU(embed_size, return_sequences=True,
-                            go_backwards=True, dropout=0.1,
-                            recurrent_dropout=drop)(r_embedding)
+                            go_backwards=True)(r_embedding)
 
         together = concatenate([forward, doc_embedding, backward], axis=2)
         semantic = TimeDistributed(Dense(dsize, activation="tanh"))(together)
@@ -349,7 +347,7 @@ class AttLayer(Layer):
 
 
 class AttenModel(BaseModel):
-    def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.0005,
+    def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.0015,
                  optim_name=None, batch_size=256, dropout=0.5):
         super().__init__(data, batch_size)
         if optim_name is None:
