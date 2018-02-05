@@ -2,6 +2,7 @@ import os
 import numpy as np
 from sklearn.metrics import log_loss, roc_auc_score
 import datetime
+from keras.callbacks import LearningRateScheduler
 
 
 def _train_model(toxic_model, batch_size, train_x, train_y,
@@ -16,8 +17,17 @@ def _train_model(toxic_model, batch_size, train_x, train_y,
 
     hdf5_path = ''
     while True:
-        toxic_model.model.fit(train_x, train_y, batch_size=batch_size,
-                              epochs=1, verbose=0)
+        def step_decay(epoch):
+            if epoch <= 2:
+                return 0.003
+            if epoch <= 4:
+                return 0.0015
+            if epoch <= 6 :
+                return 0.001
+            return 0.0005
+        lrate = LearningRateScheduler(step_decay, 1)
+        toxic_model.model.fit(train_x, train_y, batch_size=batch_size, initial_epoch=current_epoch,
+                              epochs=current_epoch+1, verbose=0, callbacks=[lrate])
         y_pred = toxic_model.model.predict(val_x, batch_size=batch_size)
 
         total_loss = 0
