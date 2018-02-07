@@ -11,6 +11,11 @@ TEST_DATA_FILE = f'{path}test.csv'
 VALID_DATA_FILE = f'{path}valid.csv'
 TRAIN_PROCESS_FILES = [
     f'{path}train_clean.csv',
+    f'{path}train_drop.csv',
+    f'{path}train_shuffle.csv',
+    f'{path}train_de.csv',
+    f'{path}train_es.csv',
+    f'{path}train_fr.csv',
 ]
 
 UNKNOWN_WORD = "_UNK_"
