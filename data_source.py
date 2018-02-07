@@ -9,6 +9,9 @@ path = 'data/'
 TRAIN_DATA_FILE = f'{path}train.csv'
 TEST_DATA_FILE = f'{path}test.csv'
 VALID_DATA_FILE = f'{path}valid.csv'
+TRAIN_PROCESS_FILES = [
+    f'{path}train_clean.csv',
+]
 
 UNKNOWN_WORD = "_UNK_"
 END_WORD = "_END_"
@@ -20,7 +23,7 @@ CLASSES = ["toxic", "severe_toxic", "obscene",
 
 class DataSource:
     def __init__(self, embed_file, embed_dim, seq_length=200,
-                 max_feature=20000, extra_valid=False):
+                 max_feature=20000):
         self._embed_file = embed_file
         self.embed_dim = embed_dim
         self.max_feature = max_feature
@@ -30,8 +33,8 @@ class DataSource:
 
         print(f'read train data: {self.train_file} '
               f'and test data: {self.test_file}')
-        self.train_df = pd.read_csv(self.train_file)  # [0:3000]
-        self.test_df = pd.read_csv(self.test_file)  # [0:3000]
+        self.train_df = pd.read_csv(self.train_file)  # [0:300]
+        self.test_df = pd.read_csv(self.test_file)  # [0:300]
 
         train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
         test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
@@ -41,20 +44,6 @@ class DataSource:
         print(f'test_sentences.shape {test_sentences.shape}')
         print(f'y_train.shape {self.y_train.shape}')
 
-        if extra_valid:
-            self.valid_file = VALID_DATA_FILE
-            print(f'and valid data: {self.valid_file}')
-            self.valid_df = pd.read_csv(self.valid_file)  # [0:3000]
-            valid_sentences = self.valid_df["comment_text"]\
-                .fillna(NAN_WORD).values
-            self.y_valid = self.valid_df[CLASSES].values
-            print(f'valid_sentences.shape {valid_sentences.shape}')
-            print(f'y_valid.shape {self.y_valid.shape}')
-        else:
-            valid_sentences = None
-            self.y_valid = None
-            self.valid_file = None
-
         print("Tokenizing sentences in train set...")
         tokenized_sentences_train, words_dict = tokenize_sentences(
             train_sentences, {})
@@ -63,11 +52,12 @@ class DataSource:
         tokenized_sentences_test, words_dict = tokenize_sentences(
             test_sentences, words_dict)
 
-        if extra_valid:
-            tokenized_sentences_valid, words_dict = tokenize_sentences(
-                valid_sentences, words_dict)
-        else:
-            tokenized_sentences_valid = None
+        tokenized_train_list = []
+        for train_pro in TRAIN_PROCESS_FILES:
+            df = pd.read_csv(train_pro)  # [0:300]
+            sent = df["comment_text"].fillna(NAN_WORD).values
+            tokenized_sen, words_dict = tokenize_sentences(sent, words_dict)
+            tokenized_train_list.append(tokenized_sen)
 
         words_dict[UNKNOWN_WORD] = len(words_dict)
 
@@ -100,21 +90,17 @@ class DataSource:
             self.seq_length)
         self.x_train = np.array(train_list_of_token_ids)
         self.x_test = np.array(test_list_of_token_ids)
-        if extra_valid:
-            valid_list_of_token_ids = convert_tokens_to_ids(
-                tokenized_sentences_valid,
-                id_to_word,
-                embedding_word_dict,
-                self.seq_length)
-            self.x_valid = np.array(valid_list_of_token_ids)
-        else:
-            self.x_valid = None
+        self.x_pre = []
+        for pro_sen in tokenized_train_list:
+            pro_ids = convert_tokens_to_ids(pro_sen, id_to_word,
+                                            embedding_word_dict,
+                                            self.seq_length)
+            self.x_pre.append(np.array(pro_ids))
 
     def description(self):
         return f'''data source use 
         train data: {self.train_file}
         test data: {self.test_file}
-        valid data: {self.valid_file}
         embed_file: {self._embed_file}
         embed_dim: {self.embed_dim}
         max_words: {self.max_feature}
@@ -346,5 +332,5 @@ def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, 
 
 if __name__ == '__main__':
     embed_f = 'data/glove.840B.300d.txt'
-    toxic_data = FastData(300)
+    toxic_data = DataSource(embed_f, 300)
     print(toxic_data.description())

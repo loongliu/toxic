@@ -78,20 +78,21 @@ def create_model_path():
 
 def train(toxic_model, model_dir, valid_split=0.1):
     print(f'call train funciton')
-    if toxic_model.data.x_valid is not None:
-        val_x = toxic_model.data.x_valid
-        val_y = toxic_model.data.y_valid
-        train_x = toxic_model.data.x_train
-        train_y = toxic_model.data.y_train
-    else:
-        x = toxic_model.data.x_train
-        y = toxic_model.data.y_train
-        size = x.shape[0]
-        split_index = int(size * valid_split)
-        val_x = x[:split_index]
-        val_y = y[:split_index]
-        train_x = x[split_index:]
-        train_y = y[split_index:]
+    x = toxic_model.data.x_train
+    y = toxic_model.data.y_train
+    size = x.shape[0]
+    split_index = int(size * valid_split)
+    val_x = x[:split_index]
+    val_y = y[:split_index]
+    train_x = x[split_index:]
+    train_y = y[split_index:]
+
+    if toxic_model.data.x_pre:
+        train_list = [train_x]
+        for train_arr in toxic_model.data.x_pre:
+            train_list.append(train_arr[split_index:])
+        train_x = np.concatenate(train_list)
+        train_y = np.concatenate([train_y]*(len(toxic_model.data.x_pre) + 1))
 
     if toxic_model.model is None:
         raise ValueError('model not defined!')
@@ -116,6 +117,13 @@ def train_folds(toxic_model, fold_count, log_dir):
 
         train_x = np.concatenate([X[:fold_start], X[fold_end:]])
         train_y = np.concatenate([y[:fold_start], y[fold_end:]])
+        if toxic_model.data.x_pre:
+            train_list = [train_x]
+            for train_arr in toxic_model.data.x_pre:
+                train_list.append(train_arr[:fold_start])
+                train_list.append(train_arr[fold_end:])
+            train_x = np.concatenate(train_list)
+            train_y = np.concatenate([train_y]*(len(toxic_model.data.x_pre)+1))
 
         val_x = X[fold_start:fold_end]
         val_y = y[fold_start:fold_end]
