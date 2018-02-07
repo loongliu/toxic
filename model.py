@@ -2,7 +2,7 @@ import keras
 from keras.layers import Dense, Input, LSTM, Embedding, Bidirectional
 from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
 from keras.layers import Conv1D, GlobalMaxPooling1D, Flatten, MaxPooling1D
-from keras.layers import TimeDistributed, Lambda, GRU
+from keras.layers import TimeDistributed, Lambda, GRU, GlobalAveragePooling1D
 from keras.layers import CuDNNGRU, Convolution1D, Concatenate
 from keras.layers.merge import concatenate
 from keras.engine.topology import Layer
@@ -387,6 +387,43 @@ class AttenModel(BaseModel):
         model_descirption = f'''Attention model
                         dense_size: {self.dense_size}
                         embed_trainbale: {self.embed_trainable}
+                        lr: {self.lr}
+                        optim_name: {self.optim_name}
+                        batch_size: {self.batch_size}
+                        dropout: {self.dropout}'''
+        print(model_descirption)
+        print(model.summary())
+
+
+class FastTextModel(BaseModel):
+    def __init__(self, data, dense_size=50, lr=0.005,
+                 optim_name=None, batch_size=256, dropout=0.5):
+        super().__init__(data, batch_size)
+        if optim_name is None:
+            optim_name = 'nadam'
+        self.lr = lr
+        self.dense_size = dense_size
+        self.optim_name = optim_name
+        self.dropout = dropout
+        self.build_model()
+        self.description = 'Fast text model'
+
+    def build_model(self):
+        data = self.data
+        input_layer = Input(shape=(data.seq_length,))
+        embedding_layer = Embedding(data.max_feature,
+                                    data.embed_dim,
+                                    input_length=data.seq_length)(input_layer)
+        x = GlobalAveragePooling1D()(embedding_layer)
+        output = Dense(6, activation='sigmoid')(x)
+
+        model = keras.models.Model(inputs=input_layer, outputs=output)
+        optimizer = get_optimizer(self.lr, self.optim_name)
+        model.compile(loss='binary_crossentropy', optimizer=optimizer,
+                      metrics=['accuracy'])
+        self.model = model
+        model_descirption = f'''Attention model
+                        dense_size: {self.dense_size}
                         lr: {self.lr}
                         optim_name: {self.optim_name}
                         batch_size: {self.batch_size}
