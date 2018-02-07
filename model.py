@@ -166,9 +166,9 @@ class DoubleGRU(BaseModel):
 
 
 class CNNModel(BaseModel):
-    def __init__(self, data, batch_size=256, embed_trainable=False,
-                 kernel_size=3, filter_count=128, lr=0.001,
-                 optim_name=None, dense_size=50, dropout=0.5):
+    def __init__(self, data, batch_size=128, embed_trainable=False,
+                 kernel_sizes=None, filter_count=256, lr=0.0015,
+                 optim_name=None, dense_size=50, dropout=0):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'nadam'
@@ -177,7 +177,7 @@ class CNNModel(BaseModel):
         self.filter_count = filter_count
         self.lr = lr
         self.dense_size = dense_size
-        self.kernel_size = kernel_size
+        self.kernel_sizes = kernel_sizes or [3, 4, 5]
         self.dropout = dropout
         self.build_model()
         self.description = 'CNN Model'
@@ -188,18 +188,17 @@ class CNNModel(BaseModel):
         x = Embedding(data.max_feature, data.embed_dim,
                       weights=[data.embed_matrix],
                       trainable=self.embed_trainable)(inputs)
-        con1 = Conv1D(self.filter_count, self.kernel_size, activation='relu')(x)
-        con1 = Dropout(self.dropout)(con1)
-        con2 = Conv1D(256, 5,
-                      activation='relu')(con1)
-        con2 = Dropout(self.dropout)(con2)
-        pool1 = GlobalMaxPooling1D()(con2)
-
-        dense1 = Dense(self.dense_size, activation='relu')(pool1)
-        dense1 = Dropout(self.dropout)(dense1)
+        # 词窗大小分别为3,4,5
+        cnn1 = Convolution1D(self.filter_count, 3, padding='same', strides = 1, activation='relu')(x)
+        cnn1 = GlobalMaxPooling1D()(cnn1)
+        cnn2 = Convolution1D(self.filter_count, 4, padding='same', strides = 1, activation='relu')(x)
+        cnn2 = GlobalMaxPooling1D()(cnn2)
+        cnn3 = Convolution1D(self.filter_count, 5, padding='same', strides = 1, activation='relu')(x)
+        cnn3 = GlobalMaxPooling1D()(cnn3)
+        cnn = concatenate([cnn1,cnn2,cnn3], axis=-1)
+        dense1 = Dense(self.dense_size, activation='relu')(cnn)
 
         output = Dense(units=6, activation='sigmoid')(dense1)
-
         model = keras.models.Model(inputs=inputs, outputs=output)
         optimizer = get_optimizer(self.lr, self.optim_name)
         model.compile(loss='binary_crossentropy', optimizer=optimizer,
@@ -212,7 +211,7 @@ class CNNModel(BaseModel):
                 filter_count: {self.filter_count}
                 lr: {self.lr}
                 dropout: {self.dropout}
-                kernel_size: {self.kernel_size}
+                kernel_size: {self.kernel_sizes}
                 optim_name: {self.optim_name}
                 batch_size: {self.batch_size}'''
         print(model_descirption)
@@ -399,9 +398,9 @@ class AttenModel(BaseModel):
 if __name__ == '__main__':
     class Data:
         def __init__(self):
-            self.seq_length = 10
-            self.max_feature = 20
-            self.embed_dim = 30
+            self.seq_length = 200
+            self.max_feature = 170000
+            self.embed_dim = 300
             self.embed_matrix = np.ones((self.max_feature, self.embed_dim))
 
     data = Data()
