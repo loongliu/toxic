@@ -135,8 +135,8 @@ class FastData:
 
         print(f'read train data: {self.train_file} '
               f'and test data: {self.test_file}')
-        self.train_df = pd.read_csv(self.train_file)   [0:30000]
-        self.test_df = pd.read_csv(self.test_file)   [0:3000]
+        self.train_df = pd.read_csv(self.train_file) #  [0:30000]
+        self.test_df = pd.read_csv(self.test_file)  # [0:3000]
 
         train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
         test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
