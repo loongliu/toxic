@@ -196,10 +196,6 @@ def download_file(url, path='data/'):
 if __name__ == '__main__':
     train_path = 'data/train.csv'
     df = pd.read_csv(train_path)
-    total_count = df.shape[0]
-    split_index = int(total_count*0.1)
-    val_df = df[:split_index]
-    df = df[split_index:]
     funs = [_shuffle, _drop, _clean]
     for fun in funs:
         source = df.copy()
@@ -208,14 +204,14 @@ if __name__ == '__main__':
             com = df.at[index, 'comment_text']
             source.at[index, 'comment_text'] = fun(com)
         result_path = 'data/train' + fun.__name__ + '.csv'
-        source.to_csv(result_path)
+        source.to_csv(result_path, index=False)
 
-    # read csv from translated comments, see https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/discussion/48038
-    urls = ['https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8338/train_fr.csv',
-            'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8339/train_es.csv',
-            'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8340/train_de.csv']
-    for url in urls:
-        download_file(url)
+    # # read csv from translated comments, see https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/discussion/48038
+    # urls = ['https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8338/train_fr.csv',
+    #         'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8339/train_es.csv',
+    #         'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8340/train_de.csv']
+    # for url in urls:
+    #     download_file(url)
 
 
 
