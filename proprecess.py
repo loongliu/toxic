@@ -181,35 +181,43 @@ def _drop(comment):
     return " ".join(word for word in words if random.random() > 0.3)
 
 
+def download_file(url, path='data/'):
+    local_filename = url.split('/')[-1]
+    print('download file: ', local_filename)
+    # NOTE the stream=True parameter
+    r = requests.get(url, stream=True)
+    with open(path + local_filename, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+    return local_filename
+
+
 if __name__ == '__main__':
     train_path = 'data/train.csv'
-    result_path = 'data/pre_train.csv'
-    val_path = 'data/valid.csv'
     df = pd.read_csv(train_path)
     total_count = df.shape[0]
     split_index = int(total_count*0.1)
     val_df = df[:split_index]
     df = df[split_index:]
-    funs = [_clean, _shuffle, _drop]
-    df_list = [df]
+    funs = [_shuffle, _drop, _clean]
     for fun in funs:
         source = df.copy()
+        print("start precess function: ", fun.__name__)
         for index in df.index.values:
             com = df.at[index, 'comment_text']
             source.at[index, 'comment_text'] = fun(com)
-        df_list.append(source)
+        result_path = 'data/train' + fun.__name__ + '.csv'
+        source.to_csv(result_path)
 
-    # # read csv from translated comments, see https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/discussion/48038
-    # urls = ['https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8338/train_fr.csv',
-    #         'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8339/train_es.csv',
-    #         'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8340/train_de.csv']
-    # for url in urls:
-    #     df_list.append(pd.read_csv(url))
+    # read csv from translated comments, see https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/discussion/48038
+    urls = ['https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8338/train_fr.csv',
+            'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8339/train_es.csv',
+            'https://kaggle2.blob.core.windows.net/forum-message-attachments/272289/8340/train_de.csv']
+    for url in urls:
+        download_file(url)
 
-    result = pd.concat(df_list)
-    result.to_csv(result_path, index=False)
 
-    val_df.to_csv(val_path, index=False)
 
 
 
