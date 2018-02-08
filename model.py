@@ -4,9 +4,11 @@ from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
 from keras.layers import Conv1D, GlobalMaxPooling1D, Flatten, MaxPooling1D
 from keras.layers import TimeDistributed, Lambda, GRU, GlobalAveragePooling1D
 from keras.layers import CuDNNGRU, Convolution1D, Concatenate
-from keras.layers.merge import concatenate
+from keras.layers.merge import concatenate, add
 from keras.engine.topology import Layer
+from keras.activations import relu
 
+from keras.initializers import RandomNormal
 from keras import initializers
 from keras import backend as K
 from keras import constraints
@@ -435,6 +437,129 @@ class FastTextModel(BaseModel):
                         dropout: {self.dropout}'''
         print(model_descirption)
         print(model.summary())
+
+
+class DPCNNModel(BaseModel):
+    def __init__(self, data, batch_size=128, embed_trainable=False,
+                 kernel_sizes=None, filter_count=256, lr=0.0015,
+                 optim_name=None, dense_size=50, dropout=0):
+        super().__init__(data, batch_size)
+        if optim_name is None:
+            optim_name = 'nadam'
+        self.optim_name = optim_name
+        self.embed_trainable = embed_trainable
+        self.filter_count = filter_count
+        self.lr = lr
+        self.dense_size = dense_size
+        self.kernel_sizes = kernel_sizes or [3, 4, 5]
+        self.dropout = dropout
+        self.use_embed = hasattr(data, 'embed_matrix')
+        self.build_model()
+        self.description = 'CNN Model'
+
+    def build_model(self):
+        data = self.data
+        inputs = Input(shape=(data.seq_length,), dtype='int32')
+        embedding = Embedding(data.max_feature, data.embed_dim,
+                      weights=[data.embed_matrix],
+                      trainable=self.embed_trainable)(inputs)
+
+        filter_nr = 300
+        kernel_size = 4
+        use_batch_norm = False
+        dropout_convo = 0
+        l2_reg_convo = 0
+        repeat_block = 2
+        repeat_dense = 1
+        dense_size = 100
+        dropout_dense = 0
+        l2_reg_dense = 0
+
+        x = _convolutional_block(filter_nr, kernel_size, use_batch_norm,
+                                 dropout_convo, l2_reg_convo)(
+            embedding)
+        x = _convolutional_block(filter_nr, kernel_size, use_batch_norm,
+                                 dropout_convo, l2_reg_convo)(x)
+        if data.embed_dim == filter_nr:
+            x = add([embedding, x])
+        else:
+            embedding_resized = _shape_matching_layer(filter_nr,
+                                                      dropout_convo,
+                                                      l2_reg_convo)(embedding)
+            x = add([embedding_resized, x])
+        for _ in range(repeat_block):
+            x = _dpcnn_block(filter_nr, kernel_size, use_batch_norm,
+                             dropout_convo, l2_reg_convo)(x)
+        x = GlobalMaxPool1D()(x)
+        for _ in range(repeat_dense):
+            x = _dense_block(dense_size, use_batch_norm,
+                             dropout_dense, l2_reg_dense)(x)
+        output = Dense(6, activation="sigmoid")(x)
+
+        model = keras.models.Model(inputs=inputs, outputs=output)
+        optimizer = get_optimizer(self.lr, self.optim_name)
+        model.compile(loss='binary_crossentropy', optimizer=optimizer,
+                      metrics=['accuracy'])
+        self.model = model
+
+        model_descirption = f'''DPCNN model'''
+        print(model_descirption)
+        print(model.summary())
+
+
+def _dense_block(dense_size, use_batch_norm, dropout, l2_reg):
+    def f(x):
+        x = Dense(dense_size, activation='linear',
+                  kernel_regularizer=regularizers.l2(l2_reg))(x)
+        x = _bn_relu_dropout_block(use_batch_norm, dropout)(x)
+        return x
+
+    return f
+
+def _shape_matching_layer(filter_nr, dropout, l2_reg):
+    def f(x):
+        x = Conv1D(filter_nr, kernel_size=1, padding='same', activation='linear',
+                   kernel_initializer=RandomNormal(mean=0.0, stddev=0.001),
+                   kernel_regularizer=regularizers.l2(l2_reg))(x)
+
+        x = Lambda(relu)(x)
+        x = Dropout(dropout)(x)
+        return x
+
+    return f
+
+
+def _convolutional_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg):
+    def f(x):
+        x = Conv1D(filter_nr, kernel_size=kernel_size, padding='same', activation='linear',
+                   kernel_initializer=RandomNormal(mean=0.0, stddev=0.001),
+                   kernel_regularizer=regularizers.l2(l2_reg))(x)
+        x = _bn_relu_dropout_block(use_batch_norm, dropout)(x)
+        return x
+
+    return f
+
+
+def _bn_relu_dropout_block(use_batch_norm, dropout):
+    def f(x):
+        if use_batch_norm:
+            x = BatchNormalization()(x)
+        x = Lambda(relu)(x)
+        x = Dropout(dropout)(x)
+        return x
+
+    return f
+
+
+def _dpcnn_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg):
+    def f(x):
+        x = MaxPooling1D(pool_size=3, strides=2)(x)
+        main = _convolutional_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg)(x)
+        main = _convolutional_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg)(main)
+        x = add([main, x])
+        return x
+
+    return f
 
 
 if __name__ == '__main__':
