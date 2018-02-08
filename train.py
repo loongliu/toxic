@@ -87,7 +87,7 @@ def train(toxic_model, model_dir, valid_split=0.1):
     train_x = x[split_index:]
     train_y = y[split_index:]
 
-    if toxic_model.data.x_pre:
+    if hasattr(toxic_model.data, 'x_pre') and toxic_model.data.x_pre:
         train_list = [train_x]
         for train_arr in toxic_model.data.x_pre:
             train_list.append(train_arr[split_index:])
