@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 import nltk
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
 
 path = 'data/'
 
@@ -117,151 +115,11 @@ class FastData:
 
     def __init__(self, embed_dim, seq_length=500, ngram_range=2,
                  max_feature=20000, extra_valid=False):
-        self.embed_dim = embed_dim
-        self.max_feature = max_feature
-        self.train_file = TRAIN_DATA_FILE
-        self.test_file = TEST_DATA_FILE
-        self.seq_length = seq_length
-        self.ngram_rage = ngram_range
-
-        print(f'read train data: {self.train_file} '
-              f'and test data: {self.test_file}')
-        self.train_df = pd.read_csv(self.train_file) #  [0:30000]
-        self.test_df = pd.read_csv(self.test_file)  # [0:3000]
-
-        train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
-        test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
-        self.y_train = self.train_df[CLASSES].values
-
-        print(f'train_sentences.shape {train_sentences.shape}')
-        print(f'test_sentences.shape {test_sentences.shape}')
-        print(f'y_train.shape {self.y_train.shape}')
-
-        if extra_valid:
-            self.valid_file = VALID_DATA_FILE
-            print(f'and valid data: {self.valid_file}')
-            self.valid_df = pd.read_csv(self.valid_file)
-            valid_sentences = self.valid_df["comment_text"]\
-                .fillna(NAN_WORD).values
-            self.y_valid = self.valid_df[CLASSES].values
-            print(f'valid_sentences.shape {valid_sentences.shape}')
-            print(f'y_valid.shape {self.y_valid.shape}')
-        else:
-            valid_sentences = None
-            self.y_valid = None
-            self.valid_file = None
-
-        print('tokenzie sentence from train and test')
-        self.x_train, self.x_valid, self.x_test, words_dict = \
-            tokenize_sentences_simple(train_sentences, valid_sentences,
-                                      test_sentences, max_feature)
-
-        print('Adding {}-gram features'.format(ngram_range))
-        # Create set of unique n-gram from the training set.
-        ngram_set = set()
-        for input_list in self.x_train:
-            for i in range(2, ngram_range + 1):
-                set_of_ngram = create_ngram_set(input_list, ngram_value=i)
-                ngram_set.update(set_of_ngram)
-
-        # Dictionary mapping n-gram token to a unique integer.
-        # Integer values are greater than max_feature in order
-        # to avoid collision with existing features.
-        start_index = self.max_feature + 1
-        token_indice = {v: k + start_index for k, v in enumerate(ngram_set)}
-        indice_token = {token_indice[k]: k for k in token_indice}
-
-        self.max_feature = np.max(list(indice_token.keys())) + 1
-
-        # Augmenting x_train and x_test with n-grams features
-        x_train = add_ngram(self.x_train,
-                            token_indice, ngram_range)
-        x_test = add_ngram(self.x_test,
-                           token_indice, ngram_range)
-        print('Average train sequence length: {}'.format(
-            np.mean(list(map(len, x_train)), dtype=int)))
-        print('Average test sequence length: {}'.format(
-            np.mean(list(map(len, x_test)), dtype=int)))
-
-        print('Pad sequences (samples x time)')
-        self.x_train = pad_sequences(x_train, maxlen=self.seq_length)
-        self.x_test = pad_sequences(x_test, maxlen=self.seq_length)
-        print('x_train shape:', self.x_train.shape)
-        print('x_test shape:', self.x_test.shape)
-
-        if extra_valid:
-            x_valid = add_ngram(self.x_valid,
-                                token_indice, ngram_range)
-            print('Average valid sequence length: {}'.format(
-                np.mean(list(map(len, x_valid)), dtype=int)))
-            self.x_valid = pad_sequences(x_valid, maxlen=self.seq_length)
-            print('x_valid shape:', self.x_valid.shape)
+        pass
 
     def description(self):
         return f'''data source use 
-        train data: {self.train_file}
-        test data: {self.test_file}
-        valid data: {self.valid_file}
-        embed_dim: {self.embed_dim}
-        max_feature: {self.max_feature}
-        seq_length: {self.seq_length}
         '''
-
-
-def tokenize_sentences_simple(train_sentences, valid_sentences, test_sentences, max_word):
-    tokenizer = Tokenizer(num_words=max_word)
-    tokenizer.fit_on_texts(list(train_sentences))
-    x_train = tokenizer.texts_to_sequences(train_sentences)
-    x_test = tokenizer.texts_to_sequences(test_sentences)
-    # seq_len = 500
-    # print(f'will use seq_len: {seq_len}')
-    # x_train = pad_sequences(list_tokenized_train, maxlen=seq_len)
-    # x_test = pad_sequences(list_tokenized_test, maxlen=seq_len)
-    if valid_sentences is not None:
-        x_valid = tokenizer.texts_to_sequences(valid_sentences)
-        # x_valid = pad_sequences(list_tokenized_valid, maxlen=seq_len)
-    else:
-        x_valid = None
-    return x_train, x_valid, x_test, tokenizer.word_index
-
-
-def create_ngram_set(input_list, ngram_value=2):
-    """
-    Extract a set of n-grams from a list of integers.
-    >>> create_ngram_set([1, 4, 9, 4, 1, 4], ngram_value=2)
-    {(4, 9), (4, 1), (1, 4), (9, 4)}
-    >>> create_ngram_set([1, 4, 9, 4, 1, 4], ngram_value=3)
-    [(1, 4, 9), (4, 9, 4), (9, 4, 1), (4, 1, 4)]
-    """
-    return set(zip(*[input_list[i:] for i in range(ngram_value)]))
-
-
-def add_ngram(sequences, token_indice, ngram_range=2):
-    """
-    Augment the input list of list (sequences) by appending n-grams values.
-    Example: adding bi-gram
-    >>> sequences = [[1, 3, 4, 5], [1, 3, 7, 9, 2]]
-    >>> token_indice = {(1, 3): 1337, (9, 2): 42, (4, 5): 2017}
-    >>> add_ngram(sequences, token_indice, ngram_range=2)
-    [[1, 3, 4, 5, 1337, 2017], [1, 3, 7, 9, 2, 1337, 42]]
-    Example: adding tri-gram
-    >>> sequences = [[1, 3, 4, 5], [1, 3, 7, 9, 2]]
-    >>> token_indice = {(1, 3): 1337, (9, 2): 42, (4, 5): 2017, (7, 9, 2): 2018}
-    >>> add_ngram(sequences, token_indice, ngram_range=3)
-    [[1, 3, 4, 5, 1337], [1, 3, 7, 9, 2, 1337, 2018]]
-    """
-    new_sequences = []
-    for input_list in sequences:
-        input_list = list(input_list)
-        new_list = input_list[:]
-        for i in range(len(new_list) - ngram_range + 1):
-            for ngram_value in range(2, ngram_range + 1):
-                ngram = tuple(new_list[i:i + ngram_value])
-                if ngram in token_indice:
-                    new_list.append(token_indice[ngram])
-        new_sequences.append(new_list)
-
-    return new_sequences
 
 
 def tokenize_sentences(sentences, words_dict):
@@ -336,6 +194,6 @@ def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, 
 
 
 if __name__ == '__main__':
-    embed_f = 'data/glove.840B.300d.txt'
-    toxic_data = DataSource(embed_f, 300)
+    embed_f = 'data/glove.6B/glove.6B.50d.txt'
+    toxic_data = DataSource(embed_f, 50)
     print(toxic_data.description())
