@@ -117,7 +117,7 @@ def train_folds(toxic_model, fold_count, log_dir):
 
         train_x = np.concatenate([X[:fold_start], X[fold_end:]])
         train_y = np.concatenate([y[:fold_start], y[fold_end:]])
-        if toxic_model.data.x_pre:
+        if hasattr(toxic_model.data, 'x_pre') and toxic_model.data.x_pre:
             train_list = [train_x]
             for train_arr in toxic_model.data.x_pre:
                 train_list.append(train_arr[:fold_start])
