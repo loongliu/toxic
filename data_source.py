@@ -125,8 +125,8 @@ class FastData:
         self.seq_length = seq_length
         self.train_file = TRAIN_DATA_FILE
         self.test_file = TEST_DATA_FILE
-        self.train_df = pd.read_csv(self.train_file)   [0:3000]
-        self.test_df = pd.read_csv(self.test_file)   [0:3000]
+        self.train_df = pd.read_csv(self.train_file)  # [0:3000]
+        self.test_df = pd.read_csv(self.test_file)  # [0:3000]
         train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
         test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
         self.y_train = self.train_df[CLASSES].values
@@ -156,7 +156,7 @@ class FastData:
         '''
 
 def tokenize_sentences_sample(train_sentences, test_sentences, max_word, maxlen):
-    tokenizer = Tokenizer(num_words=max_word)
+    tokenizer = Tokenizer()
     tokenizer.fit_on_texts(list(train_sentences))
     list_tokenized_train = tokenizer.texts_to_sequences(train_sentences)
     list_tokenized_test = tokenizer.texts_to_sequences(test_sentences)
