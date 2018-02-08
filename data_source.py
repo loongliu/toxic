@@ -117,7 +117,7 @@ class DataSource:
 
 class FastData:
     def __init__(self, use_clean=True,
-                 max_feature=20000, seq_length=100):
+                 max_feature=20000, seq_length=300):
         self.use_clean = use_clean
         # self._embed_file = embed_file
         # self.embed_dim = embed_dim
