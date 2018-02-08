@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
 import nltk
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+
+from fastText import load_model
 
 path = 'data/'
 
@@ -112,13 +116,34 @@ class DataSource:
 
 
 class FastData:
+    def __init__(self, use_clean=True,
+                 max_feature=20000, seq_length=100):
+        self.use_clean = use_clean
+        # self._embed_file = embed_file
+        # self.embed_dim = embed_dim
+        self.max_feature = max_feature
+        self.seq_length = seq_length
+        self.train_file = TRAIN_DATA_FILE
+        self.test_file = TEST_DATA_FILE
+        self.train_df = pd.read_csv(self.train_file)   [0:3000]
+        self.test_df = pd.read_csv(self.test_file)   [0:3000]
+        train_sentences = self.train_df["comment_text"].fillna(NAN_WORD).values
+        test_sentences = self.test_df["comment_text"].fillna(NAN_WORD).values
+        self.y_train = self.train_df[CLASSES].values
 
-    def __init__(self):
-        import parse_fasttext as pf
-        self.x_train, self.y_train = pf.parse_file(TRAIN_DATA_FILE, hasy=True)
-        self.x_test = pf.parse_file(TEST_DATA_FILE)
-        self.seq_length = self.x_train.shape[1]
-        self.embed_dim = self.x_train.shape[2]
+        print(f'train_sentences.shape {train_sentences.shape}')
+        print(f'test_sentences.shape {test_sentences.shape}')
+        print(f'y_train.shape {self.y_train.shape}')
+
+        print('tokenzie sentence from train and test')
+        self.x_train, self.x_test, words_dict = tokenize_sentences_sample(
+            train_sentences, test_sentences, self.max_feature, self.seq_length)
+        ft_model = load_model('data/wiki.en.bin')
+        self.embed_dim = ft_model.get_dimension()
+        self.max_feature = len(words_dict) + 1
+        self.embed_matrix = np.zeros((self.max_feature, self.embed_dim), dtype=np.float32)
+        for word, index in words_dict.items():
+            self.embed_matrix[index, :] = ft_model.get_word_vector(word).astype('float32')
         print('train_x.shape', self.x_train.shape)
         print('train_y.shape', self.y_train.shape)
         print('test_x.shape', self.x_test.shape)
@@ -129,6 +154,18 @@ class FastData:
         train_y.shape: {self.y_train.shape}
         test_x.shape: {self.x_test.shape}
         '''
+
+def tokenize_sentences_sample(train_sentences, test_sentences, max_word, maxlen):
+    tokenizer = Tokenizer(num_words=max_word)
+    tokenizer.fit_on_texts(list(train_sentences))
+    list_tokenized_train = tokenizer.texts_to_sequences(train_sentences)
+    list_tokenized_test = tokenizer.texts_to_sequences(test_sentences)
+
+    x_train = pad_sequences(list_tokenized_train, maxlen=maxlen)
+    x_test = pad_sequences(list_tokenized_test, maxlen=maxlen)
+
+    return x_train, x_test, tokenizer.word_index
+
 
 
 def tokenize_sentences(sentences, words_dict):
