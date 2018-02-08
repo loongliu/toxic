@@ -54,7 +54,7 @@ def text_to_vector(text, model, window_length):
     return x
 
 
-def df_to_data(df, model, window_length=300):
+def df_to_data(df, model, window_length=200):
     """
     Convert a given dataframe to a dataset of inputs for the NN.
     """
@@ -67,31 +67,25 @@ def df_to_data(df, model, window_length=300):
     return x
 
 
-def parse_file(filepath, model, save_y=False):
+ft_model = load_model('data/wiki.en.bin')
+
+
+def parse_file(filepath, hasy=False):
     print('Reading and preprocessing file', filepath)
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(filepath)  # [0:3000]
     df['comment_text'] = df['comment_text'].fillna('_empty_')
-    np_array = df_to_data(df, model)
-    h5f = h5py.File(filepath + '.h5', 'w')
-    h5f.create_dataset('x', data=np_array)
-    h5f.close()
-    if save_y:
+    np_array = df_to_data(df, ft_model)
+
+    if hasy:
         np_y = df[classes].values
-        h5f_y = h5py.File(filepath + '_y.h5', 'w')
-        h5f_y.create_dataset('y', data=np_y)
-        h5f_y.close()
+        return np_array, np_y
+    else:
+        return np_array
 
 
 if __name__ == '__main__':
     print('\nLoading FT model', time.time())
 
-    ft_model = load_model('data/wiki.en.bin')
     print('load success', time.time())
-    parse_file('data/train.csv', ft_model, save_y=True)
-    parse_file('data/test.csv', ft_model)
-    # parse_file('data/train_clean.csv', ft_model)
-    # parse_file('data/train_drop.csv', ft_model)
-    # parse_file('data/train_shuffle.csv', ft_model)
-    # parse_file('data/train_de.csv', ft_model)
-    # parse_file('data/train_es.csv', ft_model)
-    # parse_file('data/train_fr.csv', ft_model)
+    parse_file('data/train.csv', hasy=True)
+    parse_file('data/test.csv')

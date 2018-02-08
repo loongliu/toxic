@@ -113,12 +113,21 @@ class DataSource:
 
 class FastData:
 
-    def __init__(self, embed_dim, seq_length=500, ngram_range=2,
-                 max_feature=20000, extra_valid=False):
-        pass
+    def __init__(self):
+        import parse_fasttext as pf
+        self.x_train, self.y_train = pf.parse_file(TRAIN_DATA_FILE, hasy=True)
+        self.x_test = pf.parse_file(TEST_DATA_FILE)
+        self.seq_length = self.x_train.shape[1]
+        self.embed_dim = self.x_train.shape[2]
+        print('train_x.shape', self.x_train.shape)
+        print('train_y.shape', self.y_train.shape)
+        print('test_x.shape', self.x_test.shape)
 
     def description(self):
-        return f'''data source use 
+        return f'''fast text data source
+        train_x.shape: {self.x_train.shape}
+        train_y.shape: {self.y_train.shape}
+        test_x.shape: {self.x_test.shape}
         '''
 
 
@@ -195,5 +204,5 @@ def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, 
 
 if __name__ == '__main__':
     embed_f = 'data/glove.6B/glove.6B.50d.txt'
-    toxic_data = DataSource(embed_f, 50)
+    toxic_data = FastData()
     print(toxic_data.description())

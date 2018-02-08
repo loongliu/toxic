@@ -179,15 +179,20 @@ class CNNModel(BaseModel):
         self.dense_size = dense_size
         self.kernel_sizes = kernel_sizes or [3, 4, 5]
         self.dropout = dropout
+        self.use_embed = hasattr(data, 'embed_matrix')
         self.build_model()
         self.description = 'CNN Model'
 
     def build_model(self):
         data = self.data
-        inputs = Input(shape=(data.seq_length,), dtype='int32')
-        x = Embedding(data.max_feature, data.embed_dim,
-                      weights=[data.embed_matrix],
-                      trainable=self.embed_trainable)(inputs)
+        if self.use_embed:
+            inputs = Input(shape=(data.seq_length,), dtype='int32')
+            x = Embedding(data.max_feature, data.embed_dim,
+                          weights=[data.embed_matrix],
+                          trainable=self.embed_trainable)(inputs)
+        else:
+            inputs = Input(shape=(data.seq_length, data.embed_dim), dtype='float32')
+            x = inputs
         # 词窗大小分别为3,4,5
         cnn1 = Convolution1D(self.filter_count, 3, padding='same', strides = 1, activation='relu')(x)
         cnn1 = GlobalMaxPooling1D()(cnn1)
