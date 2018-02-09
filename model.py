@@ -196,11 +196,11 @@ class CNNModel(BaseModel):
             inputs = Input(shape=(data.seq_length, data.embed_dim), dtype='float32')
             x = inputs
         # 词窗大小分别为3,4,5
-        cnn1 = Convolution1D(self.filter_count, 3, padding='same', strides = 1, activation='relu')(x)
+        cnn1 = Convolution1D(self.filter_count, 3, padding='same', strides=1, activation='relu')(x)
         cnn1 = GlobalMaxPooling1D()(cnn1)
-        cnn2 = Convolution1D(self.filter_count, 4, padding='same', strides = 1, activation='relu')(x)
+        cnn2 = Convolution1D(self.filter_count, 4, padding='same', strides=1, activation='relu')(x)
         cnn2 = GlobalMaxPooling1D()(cnn2)
-        cnn3 = Convolution1D(self.filter_count, 5, padding='same', strides = 1, activation='relu')(x)
+        cnn3 = Convolution1D(self.filter_count, 5, padding='same', strides=1, activation='relu')(x)
         cnn3 = GlobalMaxPooling1D()(cnn3)
         cnn = concatenate([cnn1,cnn2,cnn3], axis=-1)
         dense1 = Dense(self.dense_size, activation='relu')(cnn)
@@ -402,98 +402,51 @@ class AttenModel(BaseModel):
         print(model.summary())
 
 
-class FastTextModel(BaseModel):
-    def __init__(self, data, dense_size=50, lr=0.005,
-                 optim_name=None, batch_size=256, dropout=0.5):
-        super().__init__(data, batch_size)
-        if optim_name is None:
-            optim_name = 'nadam'
-        self.lr = lr
-        self.dense_size = dense_size
-        self.optim_name = optim_name
-        self.dropout = dropout
-        self.build_model()
-        self.description = 'Fast text model'
-
-    def build_model(self):
-        data = self.data
-        input_layer = Input(shape=(data.seq_length,))
-        embedding_layer = Embedding(data.max_feature,
-                                    data.embed_dim,
-                                    input_length=data.seq_length)(input_layer)
-        x = GlobalAveragePooling1D()(embedding_layer)
-        output = Dense(6, activation='sigmoid')(x)
-
-        model = keras.models.Model(inputs=input_layer, outputs=output)
-        optimizer = get_optimizer(self.lr, self.optim_name)
-        model.compile(loss='binary_crossentropy', optimizer=optimizer,
-                      metrics=['accuracy'])
-        self.model = model
-        model_descirption = f'''Attention model
-                        dense_size: {self.dense_size}
-                        lr: {self.lr}
-                        optim_name: {self.optim_name}
-                        batch_size: {self.batch_size}
-                        dropout: {self.dropout}'''
-        print(model_descirption)
-        print(model.summary())
-
-
 class DPCNNModel(BaseModel):
-    def __init__(self, data, batch_size=128, embed_trainable=False,
-                 kernel_sizes=None, filter_count=256, lr=0.0015,
-                 optim_name=None, dense_size=50, dropout=0):
+    def __init__(self, data, batch_size=128, lr=0.0015, optim_name=None):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'nadam'
         self.optim_name = optim_name
-        self.embed_trainable = embed_trainable
-        self.filter_count = filter_count
         self.lr = lr
-        self.dense_size = dense_size
-        self.kernel_sizes = kernel_sizes or [3, 4, 5]
-        self.dropout = dropout
-        self.use_embed = hasattr(data, 'embed_matrix')
         self.build_model()
-        self.description = 'CNN Model'
+        self.description = 'DPCNN Model'
 
     def build_model(self):
         data = self.data
         inputs = Input(shape=(data.seq_length,), dtype='int32')
-        embedding = Embedding(data.max_feature, data.embed_dim,
-                      weights=[data.embed_matrix],
-                      trainable=self.embed_trainable)(inputs)
+        embedding = Embedding(data.max_feature, data.embed_dim, trainable=False,
+                              weights=[data.embed_matrix])(inputs)
 
-        filter_nr = 300
-        kernel_size = 4
-        use_batch_norm = False
+        filter_nr = data.embed_dim
+
+        kernel_size = 3
+        repeat_block = 0
+        dense_size = 256
+
+        reg_convo = 0
+        reg_dense = 0
         dropout_convo = 0
-        l2_reg_convo = 0
-        repeat_block = 2
-        repeat_dense = 1
-        dense_size = 100
         dropout_dense = 0
-        l2_reg_dense = 0
 
-        x = _convolutional_block(filter_nr, kernel_size, use_batch_norm,
-                                 dropout_convo, l2_reg_convo)(
-            embedding)
-        x = _convolutional_block(filter_nr, kernel_size, use_batch_norm,
-                                 dropout_convo, l2_reg_convo)(x)
-        if data.embed_dim == filter_nr:
-            x = add([embedding, x])
-        else:
-            embedding_resized = _shape_matching_layer(filter_nr,
-                                                      dropout_convo,
-                                                      l2_reg_convo)(embedding)
-            x = add([embedding_resized, x])
+        x = _convolutional_block(filter_nr, kernel_size,
+                                 dropout_convo, reg_convo)(embedding)
+        x = _convolutional_block(filter_nr, kernel_size,
+                                 dropout_convo, reg_convo)(x)
+        x = add([embedding, x])
+
         for _ in range(repeat_block):
-            x = _dpcnn_block(filter_nr, kernel_size, use_batch_norm,
-                             dropout_convo, l2_reg_convo)(x)
+            x = MaxPooling1D(pool_size=3, strides=2)(x)
+            main = _convolutional_block(filter_nr, kernel_size, dropout_convo,
+                                        reg_convo)(x)
+            main = _convolutional_block(filter_nr, kernel_size, dropout_convo,
+                                        reg_convo)(main)
+            x = add([main, x])
+
         x = GlobalMaxPool1D()(x)
-        for _ in range(repeat_dense):
-            x = _dense_block(dense_size, use_batch_norm,
-                             dropout_dense, l2_reg_dense)(x)
+        x = Dense(dense_size, activation='relu',
+                  kernel_regularizer=regularizers.l2(reg_dense))(x)
+        x = Dropout(dropout_dense)(x)
         output = Dense(6, activation="sigmoid")(x)
 
         model = keras.models.Model(inputs=inputs, outputs=output)
@@ -502,65 +455,29 @@ class DPCNNModel(BaseModel):
                       metrics=['accuracy'])
         self.model = model
 
-        model_descirption = f'''DPCNN model'''
+        model_descirption = f'''DPCNN model
+                            batch_size : {self.batch_size}
+                            lr: {self.lr}
+                            kernel_size: {kernel_size}
+                            repeat_block: {repeat_block}
+                            dense_size: {dense_size}
+                            reg_convo: {reg_convo}
+                            reg_dense: {reg_dense}
+                            dropout_convo: {dropout_convo}
+                            dropout_dense: {dropout_dense}
+                            '''
         print(model_descirption)
         print(model.summary())
 
 
-def _dense_block(dense_size, use_batch_norm, dropout, l2_reg):
+def _convolutional_block(filter_nr, kernel_size, dropout, reg):
     def f(x):
-        x = Dense(dense_size, activation='linear',
-                  kernel_regularizer=regularizers.l2(l2_reg))(x)
-        x = _bn_relu_dropout_block(use_batch_norm, dropout)(x)
-        return x
-
-    return f
-
-def _shape_matching_layer(filter_nr, dropout, l2_reg):
-    def f(x):
-        x = Conv1D(filter_nr, kernel_size=1, padding='same', activation='linear',
-                   kernel_initializer=RandomNormal(mean=0.0, stddev=0.001),
-                   kernel_regularizer=regularizers.l2(l2_reg))(x)
-
-        x = Lambda(relu)(x)
+        x = Conv1D(filter_nr, kernel_size=kernel_size, activation='relu',
+                   padding='same', kernel_regularizer=regularizers.l2(reg))(x)
         x = Dropout(dropout)(x)
         return x
 
     return f
-
-
-def _convolutional_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg):
-    def f(x):
-        x = Conv1D(filter_nr, kernel_size=kernel_size, padding='same', activation='linear',
-                   kernel_initializer=RandomNormal(mean=0.0, stddev=0.001),
-                   kernel_regularizer=regularizers.l2(l2_reg))(x)
-        x = _bn_relu_dropout_block(use_batch_norm, dropout)(x)
-        return x
-
-    return f
-
-
-def _bn_relu_dropout_block(use_batch_norm, dropout):
-    def f(x):
-        if use_batch_norm:
-            x = BatchNormalization()(x)
-        x = Lambda(relu)(x)
-        x = Dropout(dropout)(x)
-        return x
-
-    return f
-
-
-def _dpcnn_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg):
-    def f(x):
-        x = MaxPooling1D(pool_size=3, strides=2)(x)
-        main = _convolutional_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg)(x)
-        main = _convolutional_block(filter_nr, kernel_size, use_batch_norm, dropout, l2_reg)(main)
-        x = add([main, x])
-        return x
-
-    return f
-
 
 if __name__ == '__main__':
     class Data:
