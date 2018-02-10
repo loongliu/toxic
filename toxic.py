@@ -8,7 +8,8 @@ log_dir = log.init_log()
 
 embed_file = 'data/crawl-300d-2M.vec'
 
-toxic_data = data_source.FastData(seq_length=320)
+# toxic_data = data_source.FastData(seq_length=320)
+toxic_data = data_source.DataSource(embed_file, embed_dim=300)
 
 print(toxic_data.description())
 
