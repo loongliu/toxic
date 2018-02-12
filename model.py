@@ -421,13 +421,13 @@ class DPCNNModel(BaseModel):
         filter_nr = data.embed_dim
 
         kernel_size = 3
-        repeat_block = 0
+        repeat_block = 3
         dense_size = 256
 
-        reg_convo = 0
-        reg_dense = 0
-        dropout_convo = 0
-        dropout_dense = 0
+        reg_convo = 0.00001
+        reg_dense = 0.00001
+        dropout_convo = 0.0
+        dropout_dense = 0.0
 
         x = _convolutional_block(filter_nr, kernel_size,
                                  dropout_convo, reg_convo)(embedding)
