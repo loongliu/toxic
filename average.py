@@ -26,8 +26,9 @@ def average_res(files, output, weights=None):
 __all__ = [average_res]
 
 if __name__ == '__main__':
-    average_res(['logs/2018-01-24 10:37:06.073794/CNN Model divide1.2_0.060.csv',
-                 'logs/2018-01-23 22:04:29.044429/submit_devide1.2_0.060.csv',
-                 'logs/2018-01-24 21:56:15.757980/RCNN Model fold 9_divide1.2_0.060.csv',
-                 'logs/2018-01-24 22:10:36.654893/double_gru_submit_0.059.csv'],
-                'logs/average_lstm_cnn_rcnn_doublegru.csv')
+    average_res(['logs/2018-02-10 11:22:01.665868/dpcnn.csv',
+                 'logs/2018-02-08 16:38:07.051641/RCNN Model fold 9.csv',
+                 'logs/2018-02-09 04:09:04.798535/Double GRU fold 9.csv',
+                 'logs/2018-02-07 17:36:52.237852/CNN Model fold 9.csv',
+                 'logs/2018-02-11 12:53:04.199236/attention.csv'],
+                'logs/average_attention_dpcnn_cnn_rcnn_doublegru_0212.csv')
