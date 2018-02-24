@@ -125,10 +125,10 @@ class Lstm(BaseModel):
 
 class DoubleGRU(BaseModel):
     def __init__(self, data, dense_size=60, embed_trainable=False, lr=0.001,
-                 optim_name=None, batch_size=256, dropout=0.5, recur_unit=100):
+                 optim_name=None, batch_size=512, dropout=0.5, recur_unit=100):
         super().__init__(data, batch_size)
         if optim_name is None:
-            optim_name = 'rms'
+            optim_name = 'nadam'
         self.lr = lr
         self.embed_trainable = embed_trainable
         self.dense_size = dense_size
@@ -148,7 +148,9 @@ class DoubleGRU(BaseModel):
             embedding_layer)
         x = Dropout(self.dropout)(x)
         x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=False))(x)
+        x = Dropout(self.dropout)(x)
         x = Dense(self.dense_size, activation="relu")(x)
+        x = Dropout(self.dropout)(x)
         output_layer = Dense(6, activation="sigmoid")(x)
 
         model = keras.models.Model(inputs=input_layer, outputs=output_layer)
