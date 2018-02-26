@@ -3,7 +3,7 @@ from keras.layers import Dense, Input, LSTM, Embedding, Bidirectional
 from keras.layers import Dropout, BatchNormalization, GlobalMaxPool1D
 from keras.layers import Conv1D, GlobalMaxPooling1D, Flatten, MaxPooling1D
 from keras.layers import TimeDistributed, Lambda, GRU, GlobalAveragePooling1D
-from keras.layers import CuDNNGRU, Convolution1D, Concatenate
+from keras.layers import CuDNNGRU, Convolution1D, Concatenate, SpatialDropout1D
 from keras.layers.merge import concatenate, add
 from keras.engine.topology import Layer
 from keras.activations import relu
@@ -144,9 +144,8 @@ class DoubleGRU(BaseModel):
         embedding_layer = Embedding(data.max_feature, data.embed_dim,
                                     weights=[data.embed_matrix],
                                     trainable=self.embed_trainable)(input_layer)
-        x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=True))(
-            embedding_layer)
-        x = Dropout(self.dropout)(x)
+        x = SpatialDropout1D(self.dropout)(embedding_layer)
+        x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=True))(x)
         x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=False))(x)
         x = Dense(self.dense_size, activation="relu")(x)
         output_layer = Dense(6, activation="sigmoid")(x)
