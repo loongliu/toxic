@@ -8,10 +8,14 @@ from fastText import load_model
 
 path = 'data/'
 
-TRAIN_DATA_FILE = f'{path}train_de.csv'
+TRAIN_DATA_FILE = f'{path}train.csv'
 TEST_DATA_FILE = f'{path}test.csv'
 VALID_DATA_FILE = f'{path}valid.csv'
 TRAIN_PROCESS_FILES = [
+    f'{path}train_clean.csv',
+    f'{path}train_drop.csv',
+    f'{path}train_shuffle.csv',
+    f'{path}train_de.csv',
     f'{path}train_es.csv',
     f'{path}train_fr.csv',
 ]
@@ -40,32 +44,14 @@ class FastData:
         print(f'y_train.shape {self.y_train.shape}')
 
         print('tokenzie sentence from train and test')
-        all_sent = list(train_sentences)
-        valid_sents = []
-        for train_pro in TRAIN_PROCESS_FILES:
-            df = pd.read_csv(train_pro)  # [0:3000]
-            sent = df["comment_text"].fillna(NAN_WORD).values
-            valid_sents.append(sent)
-            all_sent.extend(list(sent))
-        tokenizer = Tokenizer()
-        tokenizer.fit_on_texts(all_sent)
-        self.x_train = tokenize_sentences_sample(train_sentences,
-                                                 tokenizer, self.seq_length)
-        self.x_test = tokenize_sentences_sample(test_sentences,
-                                                tokenizer, self.seq_length)
-        words_dict = tokenizer.word_index
-        self.x_pre = []
-        for sent in valid_sents:
-            self.x_pre.append(tokenize_sentences_sample(sent,  tokenizer,
-                                                        self.seq_length))
+        self.x_train, self.x_test, words_dict = tokenize_sentences_sample(
+            train_sentences, test_sentences, self.seq_length)
         ft_model = load_model('data/wiki.en.bin')
         self.embed_dim = ft_model.get_dimension()
         self.max_feature = len(words_dict) + 1
-        self.embed_matrix = np.zeros((self.max_feature, self.embed_dim),
-                                     dtype=np.float32)
+        self.embed_matrix = np.zeros((self.max_feature, self.embed_dim), dtype=np.float32)
         for word, index in words_dict.items():
-            self.embed_matrix[index, :] = ft_model.get_word_vector(word).\
-                astype('float32')
+            self.embed_matrix[index, :] = ft_model.get_word_vector(word).astype('float32')
         print(f'train_x.shape {self.x_train.shape}')
         print(f'train_y.shape {self.y_train.shape}')
         print(f'test_x.shape {self.x_test.shape}')
@@ -80,10 +66,16 @@ class FastData:
         '''
 
 
-def tokenize_sentences_sample(sentences, tokenizer, maxlen):
-    list_tokenized = tokenizer.texts_to_sequences(sentences)
-    x_train = pad_sequences(list_tokenized, maxlen=maxlen)
-    return x_train
+def tokenize_sentences_sample(train_sentences, test_sentences, maxlen):
+    tokenizer = Tokenizer()
+    tokenizer.fit_on_texts(list(train_sentences))
+    list_tokenized_train = tokenizer.texts_to_sequences(train_sentences)
+    list_tokenized_test = tokenizer.texts_to_sequences(test_sentences)
+
+    x_train = pad_sequences(list_tokenized_train, maxlen=maxlen)
+    x_test = pad_sequences(list_tokenized_test, maxlen=maxlen)
+
+    return x_train, x_test, tokenizer.word_index
 
 
 # old DataSource
