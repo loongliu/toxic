@@ -247,40 +247,40 @@ class RCNNModel(BaseModel):
         max_features = data.max_feature
         embed_size = data.embed_dim
         embed_matrix = data.embed_matrix
-        drop = self.dropout
         dsize = self.dense_size
 
         document = Input(shape=(maxlen,), dtype="int32")
 
+        embedder = Embedding(max_features, embed_size, weights=[embed_matrix],
+                             trainable=self.embed_trainable)
+
+        doc_embed = embedder(document)
+        # doc_embed = SpatialDropout1D(self.dropout)(doc_embed)
+        
         def k_slice(x, start, end):
-            return x[:, start:end]
+            return x[:, start:end, :]
 
         left_1 = Lambda(k_slice, arguments={'start': maxlen - 1,
-                                            'end': maxlen})(document)
+                                            'end': maxlen})(doc_embed)
         left_2 = Lambda(k_slice, arguments={'start': 0,
-                                            'end': maxlen - 1})(document)
-        left_context = concatenate([left_1, left_2], axis=1)
+                                            'end': maxlen - 1})(doc_embed)
+        l_embedding = concatenate([left_1, left_2], axis=1)
 
         right_1 = Lambda(k_slice, arguments={'start': 1,
-                                             'end': maxlen})(document)
-        right_2 = Lambda(k_slice, arguments={'start': 0, 'end': 1})(document)
-        right_context = concatenate([right_1, right_2], axis=1)
-
-        embedder = Embedding(max_features, embed_size,
-                             weights=[embed_matrix], trainable=self.embed_trainable)
-
-        doc_embedding = embedder(document)
-        l_embedding = embedder(left_context)
-        r_embedding = embedder(right_context)
+                                             'end': maxlen})(doc_embed)
+        right_2 = Lambda(k_slice, arguments={'start': 0, 'end': 1})(doc_embed)
+        r_embedding = concatenate([right_1, right_2], axis=1)
 
         forward = CuDNNGRU(embed_size, return_sequences=True)(l_embedding)
         backward = CuDNNGRU(embed_size, return_sequences=True,
                             go_backwards=True)(r_embedding)
 
-        together = concatenate([forward, doc_embedding, backward], axis=2)
+        together = concatenate([forward, doc_embed, backward], axis=2)
         semantic = TimeDistributed(Dense(dsize, activation="tanh"))(together)
-        pool_rnn = GlobalMaxPool1D()(semantic)
-        output = Dense(6, activation="sigmoid")(pool_rnn)
+        max_pool = GlobalMaxPool1D()(semantic)
+        ave_pool = GlobalAveragePooling1D()(semantic)
+        conc = concatenate([ave_pool, max_pool])
+        output = Dense(6, activation="sigmoid")(conc)
 
         model = keras.models.Model(inputs=document, outputs=output)
         optimizer = get_optimizer(self.lr, self.optim_name)
