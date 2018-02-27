@@ -146,8 +146,11 @@ class DoubleGRU(BaseModel):
                                     trainable=self.embed_trainable)(input_layer)
         x = SpatialDropout1D(self.dropout)(embedding_layer)
         x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=True))(x)
-        x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=False))(x)
-        x = Dense(self.dense_size, activation="relu")(x)
+        x = Bidirectional(CuDNNGRU(self.recur_unit, return_sequences=True))(x)
+        avg_pool = GlobalAveragePooling1D()(x)
+        max_pool = GlobalMaxPooling1D()(x)
+        conc = concatenate([avg_pool, max_pool])
+        x = Dense(self.dense_size, activation="relu")(conc)
         output_layer = Dense(6, activation="sigmoid")(x)
 
         model = keras.models.Model(inputs=input_layer, outputs=output_layer)
