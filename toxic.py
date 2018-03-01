@@ -8,14 +8,14 @@ log_dir = log.init_log()
 
 embed_file = 'data/crawl-300d-2M.vec'
 
-# toxic_data = data_source.FastData(seq_length=320)
-toxic_data = data_source.DataSource(embed_file, embed_dim=300)
+toxic_data = data_source.FastData(seq_length=320)
+# toxic_data = data_source.DataSource(embed_file, embed_dim=300)
 
 print(toxic_data.description())
 
-train_model = model.DPCNNModel(toxic_data)
+train_model = model.AttenModel(toxic_data)
 
-train_fold = False
+train_fold = True
 
 if train_fold:
     result_model = train.train_folds(train_model, 10, log_dir)

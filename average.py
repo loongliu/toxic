@@ -28,7 +28,8 @@ __all__ = [average_res]
 if __name__ == '__main__':
     average_res(['logs/2018-02-10 11:22:01.665868/dpcnn.csv',
                  'logs/2018-02-08 16:38:07.051641/RCNN Model fold 9.csv',
-                 'logs/2018-02-09 04:09:04.798535/Double GRU fold 9.csv',
+                 'logs/2018-02-27 01:12:15.038155/Double GRU fold 9.csv',
                  'logs/2018-02-07 17:36:52.237852/CNN Model fold 9.csv',
-                 'logs/2018-02-11 12:53:04.199236/attention.csv'],
-                'logs/average_attention_dpcnn_cnn_rcnn_doublegru_0212.csv')
+                 'logs/2018-03-01 00:45:44.923407/Attention Model with dropout fold 9.csv'],
+                'logs/average_attention_dpcnn_cnn_rcnn_doublegru_0301_oldgru.csv',
+               [2,3,4,1,2])

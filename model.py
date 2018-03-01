@@ -381,9 +381,8 @@ class AttenModel(BaseModel):
         embedding_layer = Embedding(data.max_feature, data.embed_dim,
                                     weights=[data.embed_matrix],
                                     trainable=self.embed_trainable)(input_layer)
-        x = Bidirectional(GRU(data.embed_dim, return_sequences=True,
-                              recurrent_dropout=self.dropout,
-                              dropout=self.dropout))(embedding_layer)
+        x = SpatialDropout1D(self.dropout)(embedding_layer)
+        x = Bidirectional(CuDNNGRU(data.embed_dim, return_sequences=True))(x)
         attention = AttLayer()(x)
         x = Dense(self.dense_size, activation="relu")(attention)
         output_layer = Dense(6, activation="sigmoid")(x)

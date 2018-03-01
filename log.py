@@ -1,6 +1,7 @@
 import sys
 import datetime
 import os
+from shutil import copyfile
 
 
 class Logger(object):
@@ -13,6 +14,11 @@ class Logger(object):
         file_path = os.path.join(self.log_dir, 'log.log')
         self.terminal = sys.stdout
         self.log = open(file_path, "a")
+
+        file_list = ['toxic.py', 'data_source.py', 'infer.py', 'log.py',
+                     'model.py', 'parse_fasttext.py', 'toxic.py', 'train.py']
+        for f in file_list:
+            copyfile(f, os.path.join(self.log_dir, f))
 
     def write(self, message):
         if message == '\n':
