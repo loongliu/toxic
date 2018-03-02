@@ -362,7 +362,7 @@ class AttLayer(Layer):
 
 
 class AttenModel(BaseModel):
-    def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.0015,
+    def __init__(self, data, dense_size=50, embed_trainable=False, lr=0.001,
                  optim_name=None, batch_size=256, dropout=0.5):
         super().__init__(data, batch_size)
         if optim_name is None:
@@ -383,8 +383,12 @@ class AttenModel(BaseModel):
                                     trainable=self.embed_trainable)(input_layer)
         x = SpatialDropout1D(self.dropout)(embedding_layer)
         x = Bidirectional(CuDNNGRU(data.embed_dim, return_sequences=True))(x)
+        x = Bidirectional(CuDNNGRU(data.embed_dim, return_sequences=True))(x)
         attention = AttLayer()(x)
-        x = Dense(self.dense_size, activation="relu")(attention)
+        avg_pool = GlobalAveragePooling1D()(x)
+        max_pool = GlobalMaxPooling1D()(x)
+        conc = concatenate([avg_pool, max_pool, attention])
+        x = Dense(self.dense_size, activation="relu")(conc)
         output_layer = Dense(6, activation="sigmoid")(x)
 
         model = keras.models.Model(inputs=input_layer, outputs=output_layer)
