@@ -60,7 +60,7 @@ def _train_model(toxic_model, batch_size, train_x, train_y,
             hdf5_path = os.path.join(model_dir, model_name)
             toxic_model.model.save(hdf5_path)
         else:
-            if current_epoch - best_epoch == 5:
+            if current_epoch - best_epoch == 3:
                 break
 
     toxic_model.model.set_weights(best_weights)
