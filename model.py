@@ -170,9 +170,9 @@ class DoubleGRU(BaseModel):
 
 
 class CNNModel(BaseModel):
-    def __init__(self, data, batch_size=128, embed_trainable=False,
-                 kernel_sizes=None, filter_count=256, lr=0.0015,
-                 optim_name=None, dense_size=50, dropout=0):
+    def __init__(self, data, batch_size=64, embed_trainable=False,
+                 kernel_sizes=None, filter_count=500, lr=0.0008,
+                 optim_name=None, dense_size=180, dropout=0.5):
         super().__init__(data, batch_size)
         if optim_name is None:
             optim_name = 'nadam'
@@ -194,19 +194,24 @@ class CNNModel(BaseModel):
             x = Embedding(data.max_feature, data.embed_dim,
                           weights=[data.embed_matrix],
                           trainable=self.embed_trainable)(inputs)
+            x = SpatialDropout1D(self.dropout)(x)
         else:
             inputs = Input(shape=(data.seq_length, data.embed_dim), dtype='float32')
             x = inputs
         # 词窗大小分别为3,4,5
         cnn1 = Convolution1D(self.filter_count, 3, padding='same', strides=1, activation='relu')(x)
-        cnn1 = GlobalMaxPooling1D()(cnn1)
+        cnn1_max = GlobalMaxPooling1D()(cnn1)
+        cnn1_ave = GlobalAveragePooling1D()(cnn1)
         cnn2 = Convolution1D(self.filter_count, 4, padding='same', strides=1, activation='relu')(x)
-        cnn2 = GlobalMaxPooling1D()(cnn2)
+        cnn2_max = GlobalMaxPooling1D()(cnn2)
+        cnn2_ave = GlobalAveragePooling1D()(cnn2)
         cnn3 = Convolution1D(self.filter_count, 5, padding='same', strides=1, activation='relu')(x)
-        cnn3 = GlobalMaxPooling1D()(cnn3)
-        cnn = concatenate([cnn1,cnn2,cnn3], axis=-1)
+        cnn3_max = GlobalMaxPooling1D()(cnn3)
+        cnn3_ave = GlobalAveragePooling1D()(cnn3)
+        cnn = concatenate([cnn1_max,cnn1_ave,cnn2_max,cnn2_ave,cnn3_max,cnn3_ave], axis=-1)
+        cnn = Dropout(self.dropout)(cnn)
         dense1 = Dense(self.dense_size, activation='relu')(cnn)
-
+        dense1 = Dropout(self.dropout)(dense1)
         output = Dense(units=6, activation='sigmoid')(dense1)
         model = keras.models.Model(inputs=inputs, outputs=output)
         optimizer = get_optimizer(self.lr, self.optim_name)
@@ -422,6 +427,7 @@ class DPCNNModel(BaseModel):
         inputs = Input(shape=(data.seq_length,), dtype='int32')
         embedding = Embedding(data.max_feature, data.embed_dim, trainable=False,
                               weights=[data.embed_matrix])(inputs)
+        embedding = SpatialDropout1D(0.5)(embedding)
 
         filter_nr = data.embed_dim
 
