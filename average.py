@@ -26,10 +26,13 @@ def average_res(files, output, weights=None):
 __all__ = [average_res]
 
 if __name__ == '__main__':
-    average_res(['logs/2018-02-10 11:22:01.665868/dpcnn.csv',
-                 'logs/2018-02-08 16:38:07.051641/RCNN Model fold 9.csv',
-                 'logs/2018-02-27 01:12:15.038155/Double GRU fold 9.csv',
-                 'logs/2018-02-07 17:36:52.237852/CNN Model fold 9.csv',
-                 'logs/2018-03-01 00:45:44.923407/Attention Model with dropout fold 9.csv'],
-                'logs/average_attention_dpcnn_cnn_rcnn_doublegru_0301_oldgru.csv',
-               [2,3,4,1,2])
+    average_res(['logs/blend/superblend_1.csv',
+                 'logs/average_dpcnn_cnn_lstm_rcnn_attent_0304.csv'],
+                'logs/average_9867_blend1_5.csv',
+               [1, 5.5])
+#     average_res(['logs/2018-03-03 09:48:04.472227/DPCNN Model fold 9.csv',
+# 'logs/2018-02-08 16:38:07.051641/RCNN Model fold 9.csv',
+# 'logs/2018-02-27 01:12:15.038155/Double GRU fold 9.csv',
+# 'logs/2018-02-07 17:36:52.237852/CNN Model fold 9.csv',
+# 'logs/2018-03-01 15:48:18.765630/Attention Model with dropout fold 9.csv'],
+#                'logs/average_dpcnn_cnn_lstm_rcnn_attent_0304.csv')
